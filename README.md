@@ -218,12 +218,47 @@ client.watch_block_number(emit_missed: true) { |n| ... }     # Vium::Watcher
 client.watch_blocks { |block| ... }
 client.watch_logs(address: addr, topics: [...]) { |logs| ... }
 client.wait_for_transaction_receipt(hash, confirmations: 3)
+client.get_logs_in_chunks(address: addr, from_block: 1, to_block: :latest)   # splits by max_block_range
 
 # generic blocking poll: returns the first truthy value or raises Vium::TimeoutError
 Vium::Poller.poll(interval: 1, timeout: 60) { client.get_transaction_receipt(hash) }
 ```
 
-Watchers run in their own thread, wake up immediately on `stop`, and keep going after errors.
+### How watchers behave
+
+- One Ruby thread per watcher, sleeping on a condition variable between ticks (`stop` wakes it
+  immediately). Each tick fetches the new block range, yields, and keeps only the last processed block
+  number: nothing accumulates inside the gem. Errors are logged (or handed to `on_error`) and the range is
+  retried on the next tick.
+- Large gaps are processed in chunks of `max_block_range` blocks (default 2000, provider limits apply), so
+  resuming after hours of downtime works.
+- `confirmations:` keeps the watcher N blocks behind the head, so logs from shallow reorgs are never delivered.
+- Watchers live in the process that started them. With Puma in cluster mode or Sidekiq, start them in a
+  single dedicated process (a `bin/indexer`, a Rake task, a one-replica container), not in every web worker.
+- Nothing is persisted by the gem. Own the cursor in your app:
+
+```ruby
+# app/indexers/usdc_deposit_indexer.rb — started once at boot by the dedicated process
+class UsdcDepositIndexer
+  def start
+    cursor = IndexerCursor.find_or_create_by!(name: "usdc_deposits") { |c| c.block = Vium.client.block_number }
+    usdc = Usdc.new
+
+    @watcher = usdc.watch_event(
+      :Transfer, args: { to: TREASURY },
+      from_block: cursor.block + 1,          # resume where the previous process stopped
+      confirmations: 2,                      # reorg margin
+      on_progress: ->(_from, to) { cursor.update!(block: to) } # runs after the range's events were handled
+    ) { |event| Deposit.upsert_from_event(event) }   # idempotent on (transaction_hash, log_index)
+
+    @watcher.on_error { |e, _| Sentry.capture_exception(e) }
+    at_exit { @watcher.stop.join(5) }
+  end
+end
+```
+
+`on_progress` is called after the block you passed processed every event of the range, so a crash in
+between simply replays that range on restart. `watcher.cursor` exposes the same value in memory.
 
 ## Wallet
 
@@ -315,6 +350,7 @@ then `bundle exec rake release` (builds the gem, tags `vX.Y.Z`, pushes to rubyge
 ## Roadmap
 
 - Contract deployment (`Contract.deploy`)
+- Multi-contract indexer helper with pluggable cursor store
 - Human-readable ABI (`parse_abi("function transfer(address to, uint256 amount)")`)
 - WebSocket connector for push-based subscriptions
 - Multicall batching of reads

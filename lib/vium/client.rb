@@ -167,16 +167,41 @@ module Vium
       end
     end
 
-    # Yields new logs matching the filter, batch per poll (an Array of normalized logs).
-    def watch_logs(address: nil, topics: nil, from_block: nil, polling_interval: nil, &block)
-      last = from_block ? from_block - 1 : block_number
-      watcher("logs", polling_interval) do
-        latest = block_number
-        next if latest <= last
+    # get_logs over a large range, split in chunks of max_block_range blocks so provider
+    # limits are respected. Yields each chunk's logs when a block is given, else returns them all.
+    def get_logs_in_chunks(from_block:, address: nil, topics: nil, to_block: :latest, max_block_range: nil)
+      size = max_block_range || Vium.config.max_block_range
+      to_block = block_number if to_block.nil? || Utils::BLOCK_TAGS.include?(to_block.to_s)
+      collected = []
+      from = from_block
+      while from <= to_block
+        to = [from + size - 1, to_block].min
+        logs = get_logs(address: address, topics: topics, from_block: from, to_block: to)
+        block_given? ? yield(logs, from, to) : collected.concat(logs)
+        from = to + 1
+      end
+      collected
+    end
 
-        logs = get_logs(address: address, topics: topics, from_block: last + 1, to_block: latest)
-        last = latest
-        block.call(logs) unless logs.empty?
+    # Yields new logs matching the filter, one Array per processed block range.
+    #
+    #   from_block:      resume from this block (catch-up is chunked by max_block_range)
+    #   confirmations:   stay this many blocks behind the head to dodge reorgs (default 0)
+    #   on_progress:     ->(from, to) called after each range is processed: persist `to` as your cursor
+    #   watcher.cursor:  last processed block number
+    def watch_logs(address: nil, topics: nil, from_block: nil, polling_interval: nil, max_block_range: nil,
+                   confirmations: 0, on_progress: nil, &block)
+      last = from_block ? from_block - 1 : block_number - confirmations
+      watcher("logs", polling_interval) do |watcher|
+        watcher.cursor ||= last
+        head = block_number - confirmations
+        while last < head && !watcher.stopped?
+          to = [last + (max_block_range || Vium.config.max_block_range), head].min
+          logs = get_logs(address: address, topics: topics, from_block: last + 1, to_block: to)
+          block.call(logs) unless logs.empty?
+          on_progress&.call(last + 1, to)
+          last = watcher.cursor = to
+        end
       end
     end
 

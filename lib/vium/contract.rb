@@ -196,21 +196,33 @@ module Vium
 
     # Fetches past events. `args` filters on indexed parameters.
     #   usdc.get_events(:Transfer, from_block: 18_000_000, to_block: :latest, args: { to: wallet.address })
-    def get_events(name = nil, from_block:, to_block: :latest, args: {})
+    # Pass max_block_range: to split a large range into several eth_getLogs calls.
+    def get_events(name = nil, from_block:, to_block: :latest, args: {}, max_block_range: nil)
       topics = name ? interface.event(name).encode_topics(args) : nil
-      logs = client.get_logs(address: address, topics: topics, from_block: from_block, to_block: to_block)
+      logs = if max_block_range
+               client.get_logs_in_chunks(address: address, topics: topics, from_block: from_block,
+                                         to_block: to_block, max_block_range: max_block_range)
+             else
+               client.get_logs(address: address, topics: topics, from_block: from_block, to_block: to_block)
+             end
       decode_logs(logs)
     end
 
     # Polls for new events in a background thread. Returns a Vium::Watcher.
     #   watcher = usdc.watch_event(:Transfer, args: { to: me }) { |event| puts event.args }
     #   watcher.stop
-    def watch_event(name = nil, args: {}, from_block: nil, polling_interval: nil, &block)
+    #
+    # Resuming after a restart: pass from_block: (your persisted cursor + 1) and persist the
+    # `to` block handed to on_progress after each processed range. confirmations: keeps the
+    # watcher N blocks behind the head so reorged logs are never delivered.
+    def watch_event(name = nil, args: {}, from_block: nil, polling_interval: nil, max_block_range: nil,
+                    confirmations: 0, on_progress: nil, &block)
       raise ::ArgumentError, "a block is required" unless block
 
       topics = name ? interface.event(name).encode_topics(args) : nil
       client.watch_logs(address: address, topics: topics, from_block: from_block,
-                        polling_interval: polling_interval) do |logs|
+                        polling_interval: polling_interval, max_block_range: max_block_range,
+                        confirmations: confirmations, on_progress: on_progress) do |logs|
         decode_logs(logs).each { |event| block.call(event) }
       end
     end

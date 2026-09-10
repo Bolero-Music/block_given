@@ -57,6 +57,16 @@ RSpec.describe Vium::Client do
     end
   end
 
+  describe "#get_logs_in_chunks" do
+    it "splits the range and resolves :latest" do
+      stub.stub("eth_getLogs", ->(params) { [{ "blockNumber" => params.first[:toBlock], "topics" => [], "data" => "0x" }] })
+      logs = client.get_logs_in_chunks(address: USDC_BASE, from_block: 1, to_block: :latest, max_block_range: 5)
+      expect(stub.calls_for("eth_getLogs").map { |p| p.first.values_at(:fromBlock, :toBlock) })
+        .to eq([%w[0x1 0x5], %w[0x6 0xa], %w[0xb 0xf], %w[0x10 0x10]])
+      expect(logs.map { |l| l[:block_number] }).to eq([5, 10, 15, 16])
+    end
+  end
+
   describe "#wait_for_transaction_receipt" do
     let(:hash) { "0x#{'ab' * 32}" }
     let(:receipt) { { "transactionHash" => hash, "blockNumber" => "0x10", "status" => "0x1", "logs" => [] } }
@@ -106,6 +116,21 @@ RSpec.describe Vium::Client do
       watcher.stop.join(1)
       expect(stub.calls_for("eth_getLogs").map { |p| p.first.values_at(:fromBlock, :toBlock) })
         .to eq([%w[0x11 0x12], %w[0x13 0x13]])
+    end
+
+    it "catches up from from_block in chunks, lags behind the head and reports progress" do
+      stub.stub("eth_blockNumber", "0x64") # head = 100
+      stub.stub("eth_getLogs", [])
+      progress = []
+      watcher = client.watch_logs(address: USDC_BASE, from_block: 1, max_block_range: 40, confirmations: 2,
+                                  on_progress: ->(from, to) { progress << [from, to] }) { |_logs| nil }
+      deadline = Time.now + 1
+      sleep 0.01 until progress.size >= 3 || Time.now > deadline
+      watcher.stop.join(1)
+      expect(progress).to eq([[1, 40], [41, 80], [81, 98]])
+      expect(watcher.cursor).to eq(98)
+      expect(stub.calls_for("eth_getLogs").map { |p| p.first.values_at(:fromBlock, :toBlock) })
+        .to eq([%w[0x1 0x28], %w[0x29 0x50], %w[0x51 0x62]])
     end
 
     it "keeps polling after an error and reports it" do

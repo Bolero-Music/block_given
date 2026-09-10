@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Log/event watchers: chunked catch-up from `from_block` (`max_block_range`), `confirmations:` lag,
+  `on_progress` callback and `Watcher#cursor` for app-side persistence; `Client#get_logs_in_chunks`.
+
 ## [0.1.0] - 2026-09-10
 
 - Supported: Ruby 3.1 to 3.4; Rails 7.0 to 8.0 (optional railtie routing logs to `Rails.logger`).

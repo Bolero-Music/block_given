@@ -37,6 +37,8 @@ module Vium
   #   watcher.stop
   class Watcher
     attr_reader :interval, :name
+    # Last fully processed position (block number for log watchers), set by the tick.
+    attr_accessor :cursor
 
     def initialize(interval:, name: "watcher", logger: nil, on_error: nil, &tick)
       raise ::ArgumentError, "a block is required" unless tick

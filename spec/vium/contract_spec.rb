@@ -155,6 +155,13 @@ RSpec.describe Vium::Contract do
       expect(events.size).to eq(1) # unknown topic skipped
     end
 
+    it "fetches events over a large range in chunks" do
+      stub.stub("eth_getLogs", ->(params) { params.first[:fromBlock] == "0x1" ? [log] : [] })
+      events = usdc.get_events(:Transfer, from_block: 1, to_block: 10, max_block_range: 4)
+      expect(stub.calls_for("eth_getLogs").size).to eq(3)
+      expect(events.size).to eq(1)
+    end
+
     it "watches events with polling" do
       stub.stub("eth_blockNumber", Vium::Connectors::Stub.sequence("0x10", "0x11", "0x11"))
       stub.stub("eth_getLogs", [log])
