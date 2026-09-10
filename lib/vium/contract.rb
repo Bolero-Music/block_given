@@ -5,7 +5,7 @@ module Vium
   # address / chain) and every ABI function becomes a Ruby method:
   #
   #   class Usdc < Vium::Contract
-  #     abi_file "abis/erc20.json"
+  #     abi_file "abis/erc20.json"   # your app's ABI file (see Vium.config.abi_path)
   #     address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
   #   end
   #
@@ -32,7 +32,13 @@ module Vium
         @interface
       end
 
+      # Loads the ABI from a JSON file. Relative paths are resolved against
+      # Vium.config.abi_path when set (ABIs live in your app, not in the gem).
       def abi_file(path)
+        base = Vium.config.abi_path
+        path = File.join(base.to_s, path.to_s) if base && !File.absolute_path?(path.to_s)
+        raise AbiError, "ABI file not found: #{path}" unless File.file?(path)
+
         abi(File.read(path))
       end
 

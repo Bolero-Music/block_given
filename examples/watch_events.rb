@@ -8,9 +8,15 @@ Vium.configure do |c|
   c.connector = Vium::Connectors::Alchemy.new(api_key: ENV.fetch("ALCHEMY_API_KEY"))
   c.chain = :base
   c.polling_interval = 3
+  c.abi_path = File.expand_path("../abis", __dir__)
 end
 
-usdc = Vium::ERC20.at("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
+class Erc20 < Vium::Contract
+  abi_file "erc20.json"
+  def format_amount(value) = Vium::Utils.format_units(value, @decimals ||= read(:decimals))
+end
+
+usdc = Erc20.at("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
 
 blocks = Vium.client.watch_block_number { |n| puts "block #{n}" }
 

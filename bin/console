@@ -9,6 +9,7 @@ if ENV["ALCHEMY_API_KEY"]
   Vium.configure do |c|
     c.connector = Vium::Connectors::Alchemy.new(api_key: ENV["ALCHEMY_API_KEY"])
     c.chain = ENV.fetch("VIUM_CHAIN", "base").to_sym
+    c.abi_path = ENV["VIUM_ABI_PATH"] if ENV["VIUM_ABI_PATH"]
   end
   puts "Vium configured for #{Vium.config.chain.name} via Alchemy"
 else
