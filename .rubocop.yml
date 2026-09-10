@@ -1,0 +1,36 @@
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "vendor/**/*"
+    - "examples/**/*"
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+Style/Documentation:
+  Enabled: false
+Metrics/BlockLength:
+  Exclude: ["spec/**/*", "*.gemspec"]
+Metrics/MethodLength:
+  Max: 30
+Metrics/ClassLength:
+  Max: 250
+Metrics/ParameterLists:
+  Max: 8
+Layout/LineLength:
+  Max: 120
+  Exclude: ["spec/**/*"]
+Lint/AmbiguousOperatorPrecedence:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Enabled: false
+Metrics/PerceivedComplexity:
+  Enabled: false
+Metrics/AbcSize:
+  Enabled: false
+Naming/MethodParameterName:
+  AllowedNames: [tx, a, b, id, to]
+Metrics/ParameterLists:
+  Max: 10

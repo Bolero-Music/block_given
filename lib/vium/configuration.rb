@@ -1,0 +1,37 @@
+# frozen_string_literal: true
+
+require "logger"
+
+module Vium
+  # Global configuration set through `Vium.configure { |c| ... }`.
+  class Configuration
+    attr_accessor :connector, :polling_interval, :timeout, :gas_multiplier, :base_fee_multiplier,
+                  :confirmations, :logger
+    attr_reader :chain
+
+    def initialize
+      @connector = nil
+      @chain = nil
+      @polling_interval = 2.0     # seconds between two polls (receipts, blocks, events)
+      @timeout = 180              # seconds before wait_for_transaction_receipt gives up
+      @gas_multiplier = 1.2       # safety margin applied on top of eth_estimateGas
+      @base_fee_multiplier = 1.2  # viem default: maxFeePerGas = baseFee * 1.2 + priorityFee
+      @confirmations = 1
+      @logger = Logger.new($stderr, level: Logger::WARN, progname: "vium")
+    end
+
+    # Accepts a Vium::Chain, a symbol (:base), a name ("base-sepolia") or a chain id (8453).
+    def chain=(value)
+      @chain = value.nil? ? nil : Chains.resolve(value)
+    end
+
+    def connector!
+      connector || raise(ConfigurationError, "no connector configured: set Vium.config.connector " \
+                                             "(e.g. Vium::Connectors::Alchemy.new(api_key: ...))")
+    end
+
+    def chain!
+      chain || raise(ConfigurationError, "no chain configured: set Vium.config.chain (e.g. :base)")
+    end
+  end
+end
