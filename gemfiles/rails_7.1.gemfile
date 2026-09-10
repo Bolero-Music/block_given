@@ -1,0 +1,11 @@
+# frozen_string_literal: true
+
+# BUNDLE_GEMFILE=gemfiles/rails_7.1.gemfile RAILS_COMPAT=1 bundle exec rspec
+source "https://rubygems.org"
+
+gemspec path: "../"
+
+gem "rails", "~> 7.1.0"
+gem "rake", "~> 13.0"
+gem "rspec", "~> 3.12"
+gem "webmock", "~> 3.18"

@@ -25,6 +25,32 @@ receipt = tx.wait!                              # polls until mined, raises if r
 usdc.events_from(receipt)                       # => [#<Vium::Event Transfer {from:, to:, value: 1000000}>]
 ```
 
+## Compatibility
+
+| | Supported | Verified by |
+|---|---|---|
+| Ruby | >= 3.1 (3.1, 3.2, 3.3, 3.4) | CI matrix + local run on each version |
+| Rails | optional, 7.0 / 7.1 / 7.2 / 8.0 | full suite run with Rails loaded (`gemfiles/rails_*.gemfile`) |
+| `eth` | ~> 0.5, >= 0.5.17 (tuple ABI support) | pinned in the gemspec |
+| stdlib | `bigdecimal`, `logger` declared explicitly | bundled gems in Ruby 3.4 / 3.5 |
+
+Vium has no runtime dependency on Rails or ActiveSupport: it is plain Ruby and works in scripts,
+Sidekiq workers, Rails apps or Hanami alike.
+
+### Rails integration
+
+```ruby
+# config/initializers/vium.rb
+Vium.configure do |c|
+  c.connector = Vium::Connectors::Alchemy.new(api_key: Rails.application.credentials.alchemy_api_key)
+  c.chain = Rails.env.production? ? :base : :base_sepolia
+end
+```
+
+A railtie (loaded automatically when Rails is present) routes Vium's logs to `Rails.logger`
+unless the initializer sets `c.logger` itself. Contract classes live wherever you want
+(`app/contracts/usdc.rb` works with Zeitwerk out of the box).
+
 ## Installation
 
 ```ruby
@@ -249,10 +275,28 @@ stub.calls_for("eth_sendRawTransaction")
 
 ```bash
 bundle install
-bundle exec rspec
+bundle exec rspec                    # unit suite (Stub connector, no network)
+COVERAGE=1 bundle exec rspec         # + SimpleCov report in coverage/ (minimum 90% lines)
 bundle exec rubocop
-ALCHEMY_API_KEY=... bin/console   # IRB with Vium configured for VIUM_CHAIN (default base)
+ALCHEMY_API_KEY=... bin/console      # IRB with Vium configured for VIUM_CHAIN (default base)
+
+# Rails compatibility suites
+BUNDLE_GEMFILE=gemfiles/rails_7.2.gemfile bundle install
+RAILS_COMPAT=1 BUNDLE_GEMFILE=gemfiles/rails_7.2.gemfile bundle exec rspec
 ```
+
+CI runs the suite on Ruby 3.1 to 3.4 and against Rails 7.0, 7.1, 7.2 and 8.0 (`.github/workflows/ci.yml`).
+
+### Versioning & releases
+
+Vium follows [Semantic Versioning](https://semver.org): breaking changes to the public API
+(`Vium::Contract`, `Wallet`, `Client`, connectors, `Utils`) bump the major version, additions the minor,
+fixes the patch. Every change is listed in `CHANGELOG.md`. Dependency policy: Ruby versions are dropped
+only once they reach end of life, Rails versions are tested while they receive security fixes, and the `eth`
+constraint is only tightened when a feature needs it.
+
+To release: bump `lib/vium/version.rb`, move the `Unreleased` notes under the new version in `CHANGELOG.md`,
+then `bundle exec rake release` (builds the gem, tags `vX.Y.Z`, pushes to rubygems).
 
 ## Roadmap
 

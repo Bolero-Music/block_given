@@ -29,4 +29,5 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "bigdecimal", ">= 3.1"
   spec.add_dependency "eth", "~> 0.5", ">= 0.5.17"
+  spec.add_dependency "logger", ">= 1.5"
 end

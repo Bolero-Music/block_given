@@ -9,6 +9,12 @@ RSpec.describe Vium::Configuration do
     expect(config.confirmations).to eq(1)
   end
 
+  it "tracks whether the logger was configured (used by the Rails railtie)" do
+    expect(Vium.config.logger_configured?).to be false
+    Vium.configure { |c| c.logger = Logger.new(nil) }
+    expect(Vium.config.logger_configured?).to be true
+  end
+
   it "resolves the chain" do
     Vium.configure { |c| c.chain = :base_sepolia }
     expect(Vium.config.chain).to eq(Vium::Chains::BASE_SEPOLIA)

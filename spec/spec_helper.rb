@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
+
+if ENV["COVERAGE"]
+  require "simplecov"
+  SimpleCov.start do
+    add_filter "/spec/"
+    enable_coverage :branch
+    minimum_coverage line: 90
+  end
+end
+require "rails/all" if ENV["RAILS_COMPAT"] # Rails must be loaded before vium for the railtie
 require "vium"
 require "webmock/rspec"
 

@@ -10,3 +10,4 @@ Gemfile.lock
 .env.*
 !.env.example
 .DS_Store
+gemfiles/*.lock

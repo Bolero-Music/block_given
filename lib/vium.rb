@@ -26,6 +26,7 @@ require_relative "vium/abi/interface"
 require_relative "vium/event"
 require_relative "vium/contract"
 require_relative "vium/contracts/erc20"
+require_relative "vium/railtie" if defined?(Rails::Railtie)
 
 # viem-inspired toolkit to read from and write to EVM smart contracts.
 #
