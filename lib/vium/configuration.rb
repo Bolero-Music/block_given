@@ -6,7 +6,7 @@ module Vium
   # Global configuration set through `Vium.configure { |c| ... }`.
   class Configuration
     attr_accessor :connector, :polling_interval, :timeout, :gas_multiplier, :base_fee_multiplier,
-                  :confirmations, :abi_path
+                  :confirmations, :abi_path, :max_block_range
     attr_reader :chain, :logger
 
     def initialize
@@ -17,6 +17,7 @@ module Vium
       @gas_multiplier = 1.2       # safety margin applied on top of eth_estimateGas
       @base_fee_multiplier = 1.2  # viem default: maxFeePerGas = baseFee * 1.2 + priorityFee
       @confirmations = 1
+      @max_block_range = 2_000    # eth_getLogs ranges are split in chunks of this many blocks
       @abi_path = nil             # directory abi_file resolves relative paths against (e.g. Rails.root.join("abis"))
       @logger = Logger.new($stderr, level: Logger::WARN, progname: "vium")
       @logger_configured = false
