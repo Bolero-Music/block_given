@@ -1,0 +1,12 @@
+/.bundle/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
+*.gem
+Gemfile.lock
+.env
+.env.*
+!.env.example
+.DS_Store
