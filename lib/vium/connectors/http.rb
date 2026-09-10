@@ -61,11 +61,20 @@ module Vium
         end
       end
 
-      def inspect = "#<#{self.class.name} url=#{redacted_url.inspect}>"
+      def inspect = "#<#{self.class.name} url=#{url ? redact(url).inspect : 'chain default'}>"
+
+      # Endpoint as it may appear in logs and error messages. RPC URLs usually carry
+      # the API key in their path (Infura, QuickNode, ...), so only scheme and host are kept.
+      def redact(endpoint)
+        uri = URI.parse(endpoint.to_s)
+        host = uri.port && uri.port != uri.default_port ? "#{uri.host}:#{uri.port}" : uri.host
+        path = uri.path.to_s.delete_prefix("/").empty? ? "" : "/…"
+        "#{uri.scheme}://#{host}#{path}"
+      rescue URI::InvalidURIError
+        "<invalid url>"
+      end
 
       private
-
-      def redacted_url = url
 
       def logger = @logger || Vium.config.logger
 
@@ -127,7 +136,7 @@ module Vium
         response = http.request(request)
 
         unless response.is_a?(Net::HTTPSuccess)
-          raise HttpError.new("HTTP #{response.code} from #{redacted_url || uri.host}: #{response.body.to_s[0, 200]}",
+          raise HttpError.new("HTTP #{response.code} from #{redact(endpoint)}: #{response.body.to_s[0, 200]}",
                               status: response.code.to_i, body: response.body)
         end
 

@@ -27,12 +27,12 @@ usdc.events_from(receipt)                       # => [#<Vium::Event Transfer {fr
 
 ## Compatibility
 
-| | Supported | Verified by |
-|---|---|---|
-| Ruby | >= 3.1 (3.1, 3.2, 3.3, 3.4) | CI matrix + local run on each version |
-| Rails | optional, 7.0 / 7.1 / 7.2 / 8.0 | full suite run with Rails loaded (`gemfiles/rails_*.gemfile`) |
-| `eth` | ~> 0.5, >= 0.5.17 (tuple ABI support) | pinned in the gemspec |
-| stdlib | `bigdecimal`, `logger` declared explicitly | bundled gems in Ruby 3.4 / 3.5 |
+|        | Supported                                  | Verified by                                                   |
+| ------ | ------------------------------------------ | ------------------------------------------------------------- |
+| Ruby   | >= 3.1 (3.1, 3.2, 3.3, 3.4)                | CI matrix + local run on each version                         |
+| Rails  | optional, 7.0 / 7.1 / 7.2 / 8.0            | full suite run with Rails loaded (`gemfiles/rails_*.gemfile`) |
+| `eth`  | ~> 0.5, >= 0.5.17 (tuple ABI support)      | pinned in the gemspec                                         |
+| stdlib | `bigdecimal`, `logger` declared explicitly | bundled gems in Ruby 3.4 / 3.5                                |
 
 Vium has no runtime dependency on Rails or ActiveSupport: it is plain Ruby and works in scripts,
 Sidekiq workers, Rails apps or Hanami alike.
@@ -85,11 +85,11 @@ Vium.client   # default Vium::Client built from the config
 
 ### Connectors
 
-| Connector | Usage |
-|---|---|
+| Connector                                 | Usage                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `Vium::Connectors::Alchemy.new(api_key:)` | Endpoint derived from the chain (`base-mainnet.g.alchemy.com`, ...). One instance serves every network. |
-| `Vium::Connectors::Http.new(url:)` | Any JSON-RPC endpoint (Hardhat, Anvil, Infura...). Without `url:` it uses the chain's public RPC. |
-| `Vium::Connectors::Stub.new(...)` | In-memory responses for tests (see below). |
+| `Vium::Connectors::Http.new(url:)`        | Any JSON-RPC endpoint (Hardhat, Anvil, Infura...). Without `url:` it uses the chain's public RPC.       |
+| `Vium::Connectors::Stub.new(...)`         | In-memory responses for tests (see below).                                                              |
 
 All HTTP connectors retry on 429/5xx/timeouts with exponential backoff (`retries:`, `retry_delay:`),
 support `batch`, and never print API keys in `inspect`.

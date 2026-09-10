@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Connectors: HTTP errors name the real endpoint with its secret masked (`Http#redact`): Alchemy keeps the
+  network host, generic URLs keep only scheme, host and port so Infura/QuickNode style keys never reach logs.
 - Watcher registry: unique `id:` per watcher, `Vium.watchers`, `Vium::Watcher.find/stop/kill/stop_all`,
   named threads (`vium:<id>`), `Watcher#to_h` diagnostics (status, cursor, ticks, last_error).
 - Log/event watchers: chunked catch-up from `from_block` (`max_block_range`), `confirmations:` lag,
