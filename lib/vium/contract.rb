@@ -216,13 +216,15 @@ module Vium
     # `to` block handed to on_progress after each processed range. confirmations: keeps the
     # watcher N blocks behind the head so reorged logs are never delivered.
     def watch_event(name = nil, args: {}, from_block: nil, polling_interval: nil, max_block_range: nil,
-                    confirmations: 0, on_progress: nil, &block)
+                    confirmations: 0, on_progress: nil, id: nil, &block)
       raise ::ArgumentError, "a block is required" unless block
 
-      topics = name ? interface.event(name).encode_topics(args) : nil
+      event = name && interface.event(name)
+      topics = event&.encode_topics(args)
+      label = "#{event ? event.name : '*'}@#{self.class.name || 'Contract'}(#{address[0, 10]})"
       client.watch_logs(address: address, topics: topics, from_block: from_block,
                         polling_interval: polling_interval, max_block_range: max_block_range,
-                        confirmations: confirmations, on_progress: on_progress) do |logs|
+                        confirmations: confirmations, on_progress: on_progress, id: id, name: label) do |logs|
         decode_logs(logs).each { |event| block.call(event) }
       end
     end
