@@ -25,9 +25,11 @@ module Vium
 
       def inspect = "#<Vium::Connectors::Alchemy api_key=#{redacted_key}>"
 
+      # Keeps the network host visible, masks the key: https://base-mainnet.g.alchemy.com/v2/abcd…
+      def redact(endpoint) = endpoint.to_s.sub(api_key, redacted_key)
+
       private
 
-      def redacted_url = "https://*.g.alchemy.com/v2/#{redacted_key}"
       def redacted_key = "#{api_key[0, 4]}…"
     end
   end

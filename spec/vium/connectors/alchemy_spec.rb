@@ -21,6 +21,11 @@ RSpec.describe Vium::Connectors::Alchemy do
     expect(connector.inspect).not_to include("secret-key-1234")
   end
 
+  it "redacts endpoints while keeping the network host" do
+    expect(connector.redact(connector.endpoint(Vium::Chains::BASE_SEPOLIA)))
+      .to eq("https://base-sepolia.g.alchemy.com/v2/secr…")
+  end
+
   describe "JSON-RPC over HTTP" do
     let(:url) { "https://base-mainnet.g.alchemy.com/v2/secret-key-1234" }
 
@@ -53,10 +58,13 @@ RSpec.describe Vium::Connectors::Alchemy do
       expect(connector.request("eth_chainId", [], chain: Vium::Chains::BASE)).to eq("0x1")
     end
 
-    it "raises HttpError after exhausting retries" do
+    it "raises HttpError after exhausting retries, naming the network but not the key" do
       stub_request(:post, url).to_return(status: 503, body: "down")
-      expect { connector.request("eth_chainId", [], chain: Vium::Chains::BASE) }
-        .to raise_error(Vium::HttpError) { |e| expect(e.status).to eq(503) }
+      expect { connector.request("eth_chainId", [], chain: Vium::Chains::BASE) }.to raise_error(Vium::HttpError) do |e|
+        expect(e.status).to eq(503)
+        expect(e.message).to include("HTTP 503 from https://base-mainnet.g.alchemy.com/v2/secr…")
+        expect(e.message).not_to include("secret-key-1234")
+      end
     end
 
     it "batches requests" do
