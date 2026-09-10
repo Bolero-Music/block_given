@@ -3,7 +3,7 @@
 RSpec.describe Vium::Contract do
   let(:stub) { build_stub }
   let(:wallet) { Vium::Wallet.new(private_key: TEST_PRIVATE_KEY) }
-  let(:usdc) { Vium::ERC20.new(address: USDC_BASE, wallet: wallet) }
+  let(:usdc) { TestERC20.new(address: USDC_BASE, wallet: wallet) }
   let(:transfer_topic) { "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" }
 
   before { configure_vium(stub) }
@@ -23,9 +23,16 @@ RSpec.describe Vium::Contract do
       expect(sub.chain).to eq(Vium::Chains::BASE)
     end
 
+    it "resolves abi_file against Vium.config.abi_path" do
+      Vium.configure { |c| c.abi_path = FIXTURES }
+      klass = Class.new(described_class) { abi_file "erc20.json" }
+      expect(klass.functions.map(&:name)).to include("transfer")
+      expect { Class.new(described_class) { abi_file "missing.json" } }.to raise_error(Vium::AbiError, /not found/)
+    end
+
     it "requires an ABI and an address" do
       expect { Class.new(described_class).new(address: USDC_BASE) }.to raise_error(Vium::AbiError)
-      expect { Vium::ERC20.new }.to raise_error(Vium::InvalidArgumentError, /address is required/)
+      expect { TestERC20.new }.to raise_error(Vium::InvalidArgumentError, /address is required/)
     end
 
     it "does not override reserved methods" do
@@ -62,7 +69,7 @@ RSpec.describe Vium::Contract do
 
     it "works without a wallet" do
       stub.stub("eth_call", word(6))
-      token = Vium::ERC20.at(USDC_BASE)
+      token = TestERC20.at(USDC_BASE)
       expect(token.decimals).to eq(6)
       expect(token.parse_amount("1.5")).to eq(1_500_000)
       expect(token.format_amount(1_500_000)).to eq("1.5")
@@ -113,7 +120,7 @@ RSpec.describe Vium::Contract do
     end
 
     it "requires a wallet" do
-      expect { Vium::ERC20.at(USDC_BASE).transfer(OTHER_ADDRESS, 1) }.to raise_error(Vium::WalletRequiredError)
+      expect { TestERC20.at(USDC_BASE).transfer(OTHER_ADDRESS, 1) }.to raise_error(Vium::WalletRequiredError)
     end
 
     it "refuses to send value to non payable functions and unknown tx options" do

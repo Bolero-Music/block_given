@@ -12,7 +12,7 @@ Vium.configure do |c|
 end
 
 class Usdc < Vium::Contract
-  abi_file "abis/erc20.json"
+  abi_file "abis/erc20.json"   # ABIs live in your repo, not in the gem
   address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 end
 
@@ -44,12 +44,13 @@ Sidekiq workers, Rails apps or Hanami alike.
 Vium.configure do |c|
   c.connector = Vium::Connectors::Alchemy.new(api_key: Rails.application.credentials.alchemy_api_key)
   c.chain = Rails.env.production? ? :base : :base_sepolia
+  c.abi_path = Rails.root.join("abis")
 end
 ```
 
 A railtie (loaded automatically when Rails is present) routes Vium's logs to `Rails.logger`
 unless the initializer sets `c.logger` itself. Contract classes live wherever you want
-(`app/contracts/usdc.rb` works with Zeitwerk out of the box).
+(`app/contracts/usdc.rb` works with Zeitwerk out of the box) and ABI files in `abis/`.
 
 ## Installation
 
@@ -75,6 +76,7 @@ Vium.configure do |c|
   c.confirmations = 1           # blocks to wait for in Transaction#wait
   c.gas_multiplier = 1.2        # margin applied to eth_estimateGas
   c.base_fee_multiplier = 1.2   # maxFeePerGas = baseFee * 1.2 + priorityFee (viem default)
+  c.abi_path = "abis"           # optional: directory Contract.abi_file resolves relative paths against
   c.logger = Logger.new($stdout, level: Logger::DEBUG)  # logs every JSON-RPC call at DEBUG
 end
 
@@ -104,9 +106,13 @@ client = Vium::Client.new(chain: fork, connector: Vium::Connectors::Http.new)
 
 ## Contracts
 
+The gem ships no ABI: keep them in your repository (`abis/*.json`, or the Hardhat/Foundry artifacts) and
+point each contract class at its file. With `Vium.config.abi_path = Rails.root.join("abis")` relative
+names resolve from that directory.
+
 ```ruby
 class CatalogShares < Vium::Contract
-  abi_file "artifacts/CatalogShares.json"   # ABI array, Hardhat/Foundry artifact, or JSON string
+  abi_file "CatalogShares.json"             # ABI array, Hardhat/Foundry artifact ({ "abi": [...] }), or JSON string via `abi`
   address "0x..."                            # optional default address
   chain :base                                # optional: pins the chain regardless of the global config
 end
@@ -253,8 +259,16 @@ Vium::Utils.keccak256("transfer(address,uint256)")  # => "0xa9059cbb..."
 Vium::Utils.checksum_address(addr), Vium::Utils.address?(str), Vium::Utils.to_hex(255), hex_to_int("0xff")
 ```
 
-`Vium::ERC20` ships with the OpenZeppelin ABI plus `parse_amount("1.5")` / `format_amount(wei)` using the
-token's decimals.
+Token helpers are one method away in your own contract class:
+
+```ruby
+class Erc20 < Vium::Contract
+  abi_file "erc20.json"
+  def decimals = @decimals ||= read(:decimals)
+  def parse_amount(value) = Vium::Utils.parse_units(value, decimals)    # "1.5" -> 1_500_000
+  def format_amount(value) = Vium::Utils.format_units(value, decimals)  # 1_500_000 -> "1.5"
+end
+```
 
 ## Testing your code
 
