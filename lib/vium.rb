@@ -52,8 +52,12 @@ module Vium
 
     attr_writer :client
 
-    # Forget configuration and default client (useful in tests).
+    # Running background watchers (see Vium::Watcher.find / stop / stop_all).
+    def watchers = Watcher.all
+
+    # Forget configuration and default client, stop every watcher (useful in tests).
     def reset!
+      Watcher.stop_all(join: 1)
       @config = nil
       @client = nil
     end

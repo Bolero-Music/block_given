@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Watcher registry: unique `id:` per watcher, `Vium.watchers`, `Vium::Watcher.find/stop/kill/stop_all`,
+  named threads (`vium:<id>`), `Watcher#to_h` diagnostics (status, cursor, ticks, last_error).
 - Log/event watchers: chunked catch-up from `from_block` (`max_block_range`), `confirmations:` lag,
   `on_progress` callback and `Watcher#cursor` for app-side persistence; `Client#get_logs_in_chunks`.
 

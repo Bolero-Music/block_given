@@ -224,6 +224,26 @@ client.get_logs_in_chunks(address: addr, from_block: 1, to_block: :latest)   # s
 Vium::Poller.poll(interval: 1, timeout: 60) { client.get_transaction_receipt(hash) }
 ```
 
+### Listing, stopping and killing watchers
+
+Every running watcher is registered under a unique id (auto-generated, or the `id:` you pass), and its
+thread is named `vium:<id>` so it shows up in `Thread.list` and in thread dumps.
+
+```ruby
+usdc.watch_event(:Transfer, id: "usdc-deposits") { |e| ... }
+Vium.client.watch_block_number { |n| ... }               # id auto-generated: "block_number-3fa9c1"
+
+Vium.watchers                          # => running watchers, oldest first (alias Vium::Watcher.all)
+Vium.watchers.map(&:to_h)              # id, name, status, cursor, ticks, started_at, last_tick_at, last_error...
+Vium::Watcher.find("usdc-deposits")    # => the watcher, nil if not running
+Vium::Watcher.stop("usdc-deposits", join: 5)   # graceful: finishes the current tick
+Vium::Watcher.kill("usdc-deposits")            # forceful: Thread#kill, for a tick stuck in a network call
+Vium::Watcher.stop_all(join: 5)                # e.g. in an at_exit / SIGTERM handler
+```
+
+Starting a second watcher with an id that is already running raises, which protects against double
+starts after a code reload. `Vium.reset!` stops every watcher.
+
 ### How watchers behave
 
 - One Ruby thread per watcher, sleeping on a condition variable between ticks (`stop` wakes it

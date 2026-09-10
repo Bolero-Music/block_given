@@ -34,3 +34,5 @@ Naming/MethodParameterName:
   AllowedNames: [tx, a, b, id, to]
 Metrics/ParameterLists:
   Max: 10
+Naming/BlockForwarding:
+  Enabled: false # anonymous `&` with keyword args is a syntax error on Ruby 3.1

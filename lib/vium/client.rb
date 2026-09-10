@@ -146,9 +146,9 @@ module Vium
 
     # Yields each new block number. With emit_missed: true every block between two
     # polls is yielded, otherwise only the latest one.
-    def watch_block_number(polling_interval: nil, emit_missed: false, &block)
+    def watch_block_number(polling_interval: nil, emit_missed: false, id: nil, &block)
       last = nil
-      watcher("block_number", polling_interval) do
+      watcher("block_number", polling_interval, id: id) do
         current = block_number
         next if last && current <= last
 
@@ -161,8 +161,8 @@ module Vium
       end
     end
 
-    def watch_blocks(polling_interval: nil, include_transactions: false, &block)
-      watch_block_number(polling_interval: polling_interval, emit_missed: true) do |number|
+    def watch_blocks(polling_interval: nil, include_transactions: false, id: nil, &block)
+      watch_block_number(polling_interval: polling_interval, emit_missed: true, id: id) do |number|
         block.call(get_block(number, include_transactions: include_transactions))
       end
     end
@@ -189,10 +189,11 @@ module Vium
     #   confirmations:   stay this many blocks behind the head to dodge reorgs (default 0)
     #   on_progress:     ->(from, to) called after each range is processed: persist `to` as your cursor
     #   watcher.cursor:  last processed block number
+    #   id:              stable identifier for Vium::Watcher.find / stop (default: auto-generated)
     def watch_logs(address: nil, topics: nil, from_block: nil, polling_interval: nil, max_block_range: nil,
-                   confirmations: 0, on_progress: nil, &block)
+                   confirmations: 0, on_progress: nil, id: nil, name: nil, &block)
       last = from_block ? from_block - 1 : block_number - confirmations
-      watcher("logs", polling_interval) do |watcher|
+      watcher(name || "logs@#{Array(address).first || '*'}", polling_interval, id: id) do |watcher|
         watcher.cursor ||= last
         head = block_number - confirmations
         while last < head && !watcher.stopped?
@@ -206,8 +207,8 @@ module Vium
     end
 
     # Generic background watcher on this client.
-    def watcher(name, polling_interval = nil, &)
-      Watcher.new(interval: polling_interval || self.polling_interval, name: name, logger: logger, &).start
+    def watcher(name, polling_interval = nil, id: nil, &tick)
+      Watcher.new(interval: polling_interval || self.polling_interval, name: name, id: id, logger: logger, &tick).start
     end
 
     def inspect = "#<Vium::Client chain=#{chain} connector=#{connector.inspect}>"
