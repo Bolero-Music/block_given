@@ -6,8 +6,8 @@ module Vium
   # Global configuration set through `Vium.configure { |c| ... }`.
   class Configuration
     attr_accessor :connector, :polling_interval, :timeout, :gas_multiplier, :base_fee_multiplier,
-                  :confirmations, :logger
-    attr_reader :chain
+                  :confirmations
+    attr_reader :chain, :logger
 
     def initialize
       @connector = nil
@@ -18,7 +18,16 @@ module Vium
       @base_fee_multiplier = 1.2  # viem default: maxFeePerGas = baseFee * 1.2 + priorityFee
       @confirmations = 1
       @logger = Logger.new($stderr, level: Logger::WARN, progname: "vium")
+      @logger_configured = false
     end
+
+    def logger=(logger)
+      @logger = logger
+      @logger_configured = true
+    end
+
+    # true once an application set its own logger (the Rails railtie respects it).
+    def logger_configured? = @logger_configured
 
     # Accepts a Vium::Chain, a symbol (:base), a name ("base-sepolia") or a chain id (8453).
     def chain=(value)
