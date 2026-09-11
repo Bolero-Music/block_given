@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Remi Wallaere
+Copyright (c) 2026 Bolero Music
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
