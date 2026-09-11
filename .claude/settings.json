@@ -30,5 +30,6 @@
       "Read(./.env.*)",
       "Read(~/.gem/credentials)"
     ]
-  }
+  },
+  "includeCoAuthoredBy": false
 }
