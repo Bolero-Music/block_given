@@ -117,15 +117,15 @@ point each contract class at its file. With `BlockGiven.config.abi_path = Rails.
 names resolve from that directory.
 
 ```ruby
-class CatalogShares < BlockGiven::Contract
-  abi_file "CatalogShares.json"             # ABI array, Hardhat/Foundry artifact ({ "abi": [...] }), or JSON string via `abi`
-  address "0x..."                            # optional default address
-  chain :base                                # optional: pins the chain regardless of the global config
+class Usdc < BlockGiven::Contract
+  abi_file "erc20.json"                              # ABI array, Hardhat/Foundry artifact ({ "abi": [...] }), or JSON string via `abi`
+  address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" # optional default address (USDC on Base)
+  chain :base                                        # optional: pins the chain regardless of the global config
 end
 
-shares = CatalogShares.new(wallet: wallet)            # default address
-shares = CatalogShares.at("0x...", wallet: wallet)    # explicit address
-shares = CatalogShares.at("0x...")                    # read-only (no wallet)
+usdc = Usdc.new(wallet: wallet)                                          # default address
+usdc = Usdc.at("0x036CbD53842c5426634e7929541eC2318f3dCF7e", wallet: wallet)  # explicit address (USDC on Base Sepolia)
+usdc = Usdc.at("0x036CbD53842c5426634e7929541eC2318f3dCF7e")                 # read-only (no wallet)
 ```
 
 ### Calling functions
@@ -134,40 +134,44 @@ Every ABI function is available in snake_case. `view`/`pure` functions run `eth_
 values; the others sign and broadcast a transaction and return a `BlockGiven::Transaction`.
 
 ```ruby
-shares.balance_of("0x...")                    # positional
-shares.balance_of(account: "0x...")           # keyword (ABI input names, leading _ stripped, snake_cased)
-shares.transfer(to: "0x...", amount: 1e6)     # floats are accepted when they are whole numbers
-shares.transfer(wallet2, 1_000_000)           # anything responding to #address works as an address
+usdc.balance_of("0x...")                      # positional
+usdc.balance_of(account: "0x...")             # keyword (ABI input names, leading _ stripped, snake_cased)
+usdc.transfer(to: "0x...", amount: 1e6)       # 1 USDC; floats are accepted when they are whole numbers
+usdc.transfer(wallet2, 1_000_000)             # anything responding to #address works as an address
+usdc.approve(spender, 2**256 - 1)             # uint256 takes any Integer
+usdc.allowance(wallet.address, spender)
 ```
 
 Argument coercion: integers accept `Integer`, whole `Float`/`BigDecimal`, decimal or hex strings; tuples accept
 `Hash` (component names) or `Array`; `bytes` accept hex or binary strings. Decoded outputs give checksummed
 addresses, `0x` hex for bytes, and named tuples as `Hash`. Multiple outputs come back as an `Array`.
 
-Transaction and call overrides live in the reserved `tx:` keyword so they never clash with ABI input names:
+Transaction and call overrides live in the reserved `tx:` keyword so they never clash with ABI input names
+(ERC20 itself has an input called `value`):
 
 ```ruby
-vault.deposit(amount, tx: { value: BlockGiven::Utils.parse_ether("0.1"), gas: 200_000, nonce: 12 })
-shares.balance_of(addr, tx: { block: 20_000_000 })          # historical read
-shares.owner_of(1, tx: { from: "0x..." })                    # msg.sender for eth_call
+usdc.transfer(to: addr, amount: 1e6, tx: { gas: 80_000, nonce: 12 })
+usdc.balance_of(addr, tx: { block: 20_000_000 })                # historical read
+weth.deposit(tx: { value: BlockGiven::Utils.parse_ether("0.1") })  # payable: weth = Weth.at("0x4200000000000000000000000000000000000006")
+usdc.simulate(:transfer, addr, 1e6, tx: { from: treasury })     # eth_call with another msg.sender
 # allowed keys: value gas nonce max_fee_per_gas max_priority_fee_per_gas gas_price from block
 ```
 
 Explicit API (handles names clashing with Ruby methods, overloads by signature, etc.):
 
 ```ruby
-shares.read(:balance_of, addr)
-shares.write("safeMint(address,bytes)", addr, "0x")
-shares.simulate(:buy, 42, tx: { value: price })   # eth_call from the wallet: raises the decoded revert without paying gas
-shares.estimate_gas(:buy, 42, tx: { value: price })
-shares.encode_function_data(:transfer, to: addr, amount: 1)
-shares.decode_function_result(:balance_of, "0x...")
+usdc.read(:balance_of, addr)
+usdc.write("transfer(address,uint256)", addr, 1_000_000)   # full signature picks an overload
+usdc.simulate(:transfer, addr, 10**12)     # eth_call from the wallet: raises the decoded revert without paying gas
+usdc.estimate_gas(:transfer, addr, 1_000_000)
+usdc.encode_function_data(:transfer, to: addr, amount: 1)
+usdc.decode_function_result(:balance_of, "0x...")
 ```
 
 ### Transactions & receipts
 
 ```ruby
-tx = shares.transfer(to: addr, amount: 1)
+tx = usdc.transfer(to: addr, amount: 1e6)
 tx.hash                      # "0x..."
 tx.explorer_url              # https://basescan.org/tx/0x...
 tx.mined?                    # non-blocking
@@ -185,22 +189,22 @@ client.transaction("0x...")  # the same handle for a hash you persisted earlier
 A transaction hash is the keccak of the signed bytes, so it is known **before** anything is sent.
 `prepare_write` (or `Wallet#signed_transaction`) signs without broadcasting; persist the hash and
 nonce, then broadcast. If the RPC call times out you still know exactly which transaction to look for,
-and a same-nonce replacement can never be mined twice.
+and a same-nonce replacement can never be mined twice. Example: paying out USDC from an outbox table.
 
 ```ruby
-signed = registry.prepare_write(:record, movement_id, tx: { nonce: call.nonce })
-signed.hash, signed.nonce, signed.raw          # known now; signed.to_h for persistence
-call.update!(tx_hash: signed.hash, status: :submitted)
-signed.broadcast                               # eth_sendRawTransaction, returns the Transaction
+signed = usdc.prepare_write(:transfer, to: payout.wallet, amount: 12_500_000, tx: { nonce: payout.nonce })
+signed.hash, signed.nonce, signed.raw                       # known now; signed.to_h for persistence
+payout.update!(tx_hash: signed.hash, raw_tx: signed.raw, status: :submitted)
+signed.broadcast                                            # eth_sendRawTransaction, returns the Transaction
 
 # later, one tick of your outbox worker (possibly another process: rebuild from the persisted bytes)
-signed = BlockGiven::SignedTransaction.from_raw(call.raw_tx, wallet: wallet, interface: registry.interface)
-tx = signed.transaction                                   # same as client.transaction(call.tx_hash)
+signed = BlockGiven::SignedTransaction.from_raw(payout.raw_tx, wallet: wallet, interface: usdc.interface)
+tx = signed.transaction                                     # same as client.transaction(payout.tx_hash)
 case tx.status
-when :success  then call.confirmed! if tx.confirmed?(5)   # registry.events_from(tx.receipt) has the logs
-when :reverted then call.failed!
-when :unknown  then signed.broadcast                      # dropped by the node: resend the same bytes
-when :pending  then signed.replacement.broadcast if call.submitted_at < 5.minutes.ago
+when :success  then payout.confirmed! if tx.confirmed?(5)   # usdc.events_from(tx.receipt) => [Transfer ...]
+when :reverted then payout.failed!
+when :unknown  then signed.broadcast                        # dropped by the node: resend the same bytes
+when :pending  then signed.replacement.broadcast if payout.submitted_at < 5.minutes.ago
 end
 ```
 
