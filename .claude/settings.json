@@ -8,7 +8,7 @@
       "Bash(bundle exec ruby -Ilib*)",
       "Bash(bin/setup*)",
       "Bash(bin/matrix*)",
-      "Bash(gem build vium.gemspec*)",
+      "Bash(gem build uncle_block_given.gemspec*)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",

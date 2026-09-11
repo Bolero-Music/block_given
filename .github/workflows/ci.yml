@@ -24,7 +24,7 @@ jobs:
           bundler-cache: true
       - run: COVERAGE=1 bundle exec rspec
       - run: bundle exec rubocop
-      - run: gem build vium.gemspec
+      - run: gem build uncle_block_given.gemspec
 
   rails:
     name: Rails ${{ matrix.rails }} / Ruby ${{ matrix.ruby }}

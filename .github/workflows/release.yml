@@ -1,6 +1,6 @@
 # Publishes the gem to RubyGems when a v* tag is pushed, using RubyGems trusted publishing
-# (no API key stored in GitHub). One-time setup on rubygems.org: gem "vium" -> Trusted publishers ->
-# GitHub Actions, repository Bolero-Music/vium, workflow release.yml, environment "release".
+# (no API key stored in GitHub). One-time setup on rubygems.org: gem "uncle_block_given" -> Trusted publishers ->
+# GitHub Actions, repository Bolero-Music/uncle_block_given, workflow release.yml, environment "release".
 name: Release
 on:
   push:
@@ -22,9 +22,9 @@ jobs:
           bundler-cache: true
         env:
           BUNDLE_BUILD__RBSECP256K1: --with-system-library
-      - name: Check the tag matches lib/vium/version.rb
+      - name: Check the tag matches lib/uncle_block_given/version.rb
         run: |
-          version=$(ruby -Ilib -e 'require "vium/version"; print Vium::VERSION')
+          version=$(ruby -Ilib -e 'require "uncle_block_given/version"; print UncleBlockGiven::VERSION')
           [ "v$version" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != v$version"; exit 1; }
       - run: bundle exec rspec
       - uses: rubygems/release-gem@v1

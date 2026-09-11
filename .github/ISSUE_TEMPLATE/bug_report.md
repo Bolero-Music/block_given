@@ -14,7 +14,7 @@ labels: bug
 **Expected behavior**
 
 **Environment**
-- vium version:
+- uncle_block_given version:
 - Ruby version:
 - Rails version (if any):
 - Connector / chain:

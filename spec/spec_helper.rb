@@ -10,8 +10,8 @@ if ENV["COVERAGE"]
     minimum_coverage line: 90
   end
 end
-require "rails/all" if ENV["RAILS_COMPAT"] # Rails must be loaded before vium for the railtie
-require "vium"
+require "rails/all" if ENV["RAILS_COMPAT"] # Rails must be loaded before uncle_block_given for the railtie
+require "uncle_block_given"
 require "webmock/rspec"
 
 # Hardhat / Anvil account #0 — public test key, never holds real funds.
@@ -22,12 +22,12 @@ USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 FIXTURES = File.expand_path("fixtures", __dir__)
 
 # A contract class the way an application would declare it (ABI file lives in the app repo).
-class TestERC20 < Vium::Contract
+class TestERC20 < UncleBlockGiven::Contract
   abi_file File.join(FIXTURES, "erc20.json")
 
   def decimals = @decimals ||= read(:decimals)
-  def parse_amount(value) = Vium::Utils.parse_units(value, decimals)
-  def format_amount(value) = Vium::Utils.format_units(value, decimals)
+  def parse_amount(value) = UncleBlockGiven::Utils.parse_units(value, decimals)
+  def format_amount(value) = UncleBlockGiven::Utils.format_units(value, decimals)
 end
 
 module SpecHelpers
@@ -35,16 +35,16 @@ module SpecHelpers
   def word(value)
     case value
     when Integer then "0x#{value.to_s(16).rjust(64, '0')}"
-    when String then "0x#{Vium::Utils.strip_hex(value).rjust(64, '0')}"
+    when String then "0x#{UncleBlockGiven::Utils.strip_hex(value).rjust(64, '0')}"
     end
   end
 
   def abi_encode(types, values)
-    Vium::Utils.bin_to_hex(Eth::Abi.encode(types, values))
+    UncleBlockGiven::Utils.bin_to_hex(Eth::Abi.encode(types, values))
   end
 
   def build_stub(extra = {})
-    Vium::Connectors::Stub.new(
+    UncleBlockGiven::Connectors::Stub.new(
       {
         "eth_chainId" => "0x2105",
         "eth_blockNumber" => "0x10",
@@ -58,8 +58,8 @@ module SpecHelpers
     )
   end
 
-  def configure_vium(stub, chain: :base)
-    Vium.configure do |c|
+  def configure_uncle_block_given(stub, chain: :base)
+    UncleBlockGiven.configure do |c|
       c.connector = stub
       c.chain = chain
       c.polling_interval = 0.01
@@ -74,6 +74,6 @@ RSpec.configure do |config|
   config.disable_monkey_patching!
   config.order = :random
   config.example_status_persistence_file_path = "tmp/rspec_status"
-  config.before { Vium.reset! }
-  config.after { Vium.reset! }
+  config.before { UncleBlockGiven.reset! }
+  config.after { UncleBlockGiven.reset! }
 end

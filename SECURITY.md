@@ -21,5 +21,5 @@ decisions (receipt status, revert reasons).
 
 - Load private keys and API keys from the environment, Rails credentials or a secret manager. Never commit
   them; `.env` is git-ignored and `.env.example` documents the expected variables.
-- `Vium::Wallet#inspect` hides the key and connectors mask API keys, but the raw signed transaction returned
+- `UncleBlockGiven::Wallet#inspect` hides the key and connectors mask API keys, but the raw signed transaction returned
   by `sign_transaction` is public data by design: it can be rebroadcast by anyone who sees it.

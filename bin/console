@@ -2,18 +2,18 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "vium"
+require "uncle_block_given"
 require "irb"
 
 if ENV["ALCHEMY_API_KEY"]
-  Vium.configure do |c|
-    c.connector = Vium::Connectors::Alchemy.new(api_key: ENV["ALCHEMY_API_KEY"])
-    c.chain = ENV.fetch("VIUM_CHAIN", "base").to_sym
-    c.abi_path = ENV["VIUM_ABI_PATH"] if ENV["VIUM_ABI_PATH"]
+  UncleBlockGiven.configure do |c|
+    c.connector = UncleBlockGiven::Connectors::Alchemy.new(api_key: ENV["ALCHEMY_API_KEY"])
+    c.chain = ENV.fetch("UNCLE_BLOCK_GIVEN_CHAIN", "base").to_sym
+    c.abi_path = ENV["UNCLE_BLOCK_GIVEN_ABI_PATH"] if ENV["UNCLE_BLOCK_GIVEN_ABI_PATH"]
   end
-  puts "Vium configured for #{Vium.config.chain.name} via Alchemy"
+  puts "UncleBlockGiven configured for #{UncleBlockGiven.config.chain.name} via Alchemy"
 else
-  puts "Set ALCHEMY_API_KEY to get a configured client (Vium.client)"
+  puts "Set ALCHEMY_API_KEY to get a configured client (UncleBlockGiven.client)"
 end
 
 IRB.start(__FILE__)

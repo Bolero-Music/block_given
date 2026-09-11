@@ -1,11 +1,11 @@
 ---
 name: add-client-method
-description: Add or change a JSON-RPC method on Vium::Client (eth_* wrappers, fee logic, receipts, logs). Use when exposing a new RPC call or changing what an existing client method returns.
+description: Add or change a JSON-RPC method on UncleBlockGiven::Client (eth_* wrappers, fee logic, receipts, logs). Use when exposing a new RPC call or changing what an existing client method returns.
 ---
 
 # Add a Client method
 
-`Vium::Client` wraps JSON-RPC so callers get Ruby values. Follow the existing methods in `lib/vium/client.rb`.
+`UncleBlockGiven::Client` wraps JSON-RPC so callers get Ruby values. Follow the existing methods in `lib/uncle_block_given/client.rb`.
 
 ## Steps
 
@@ -18,7 +18,7 @@ description: Add or change a JSON-RPC method on Vium::Client (eth_* wrappers, fe
    when a value object exists. `nil` results stay `nil` (not found), never raise.
 4. **Errors**: let `RpcError` / `ContractRevertError` propagate. If a method is optional on some nodes
    (like `eth_maxPriorityFeePerGas`), rescue `RpcError` and fall back explicitly with a comment.
-5. **Spec** in `spec/vium/client_spec.rb` with `build_stub` (see `spec_helper.rb`): assert both the params
+5. **Spec** in `spec/uncle_block_given/client_spec.rb` with `build_stub` (see `spec_helper.rb`): assert both the params
    sent (`stub.calls_for("eth_x").last`) and the decoded result. No network.
 6. **Docs**: one line in README "Client (low level)" and CHANGELOG `Unreleased`.
 
