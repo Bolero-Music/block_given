@@ -14,7 +14,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y libsecp256k1-dev
       - uses: ruby/setup-ruby@v1
         with:
