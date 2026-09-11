@@ -1,0 +1,30 @@
+# Publishes the gem to RubyGems when a v* tag is pushed, using RubyGems trusted publishing
+# (no API key stored in GitHub). One-time setup on rubygems.org: gem "vium" -> Trusted publishers ->
+# GitHub Actions, repository Bolero-Music/vium, workflow release.yml, environment "release".
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libsecp256k1-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+        env:
+          BUNDLE_BUILD__RBSECP256K1: --with-system-library
+      - name: Check the tag matches lib/vium/version.rb
+        run: |
+          version=$(ruby -Ilib -e 'require "vium/version"; print Vium::VERSION')
+          [ "v$version" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != v$version"; exit 1; }
+      - run: bundle exec rspec
+      - uses: rubygems/release-gem@v1

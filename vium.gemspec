@@ -15,13 +15,15 @@ Gem::Specification.new do |spec|
     EIP-1559 transactions, pluggable JSON-RPC connectors (Alchemy first) and
     polling helpers for receipts, blocks and events.
   DESC
-  spec.homepage = "https://github.com/remiwallaere/vium"
+  spec.homepage = "https://github.com/Bolero-Music/vium"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata["bug_tracker_uri"] = "#{spec.homepage}/issues"
+  spec.metadata["documentation_uri"] = "https://rubydoc.info/gems/vium"
   spec.metadata["rubygems_mfa_required"] = "true"
 
   spec.files = Dir["lib/**/*.rb", "README.md", "CHANGELOG.md", "LICENSE.txt"]
