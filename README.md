@@ -3,6 +3,7 @@
 [![CI](https://github.com/Bolero-Music/block_given/actions/workflows/ci.yml/badge.svg)](https://github.com/Bolero-Music/block_given/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/block_given.svg)](https://rubygems.org/gems/block_given)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
+[![API docs](https://img.shields.io/badge/docs-rubydoc.info-blue.svg)](https://rubydoc.info/gems/block_given)
 ![Ruby 3.1+](https://img.shields.io/badge/ruby-%3E%3D%203.1-cc342d)
 
 **Ruby client for EVM smart contracts, inspired by [viem](https://viem.sh).**
@@ -51,7 +52,7 @@ usdc.events_from(receipt)                       # => [#<BlockGiven::Event Transf
 - [Testing your code](#testing-your-code)
 - [Compatibility](#compatibility)
   - [Rails integration](#rails-integration)
-- [Development](#development)
+- [Development](#development) (the full API reference lives on [rubydoc.info](https://rubydoc.info/gems/block_given))
   - [Versioning & releases](#versioning--releases)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -416,9 +417,11 @@ bin/setup                            # bundle install (+ libsecp256k1 fallback)
 bundle exec rspec                    # unit suite (Stub connector, no network)
 COVERAGE=1 bundle exec rspec         # + SimpleCov report in coverage/ (minimum 90% lines)
 bundle exec rubocop
+bundle exec rake doc                 # YARD API docs in doc/ (also published at rubydoc.info/gems/block_given)
+bundle exec rake doc_check           # fails unless 100% of the public API is documented
 ALCHEMY_API_KEY=... bin/console      # IRB with BlockGiven configured for BLOCK_GIVEN_CHAIN (default base)
 
-bundle exec rake ci                  # specs + rubocop + gem build
+bundle exec rake ci                  # specs + rubocop + doc coverage + gem build
 
 # Ruby / Rails matrix (Docker for the Rubies you do not have locally)
 bin/matrix                           # Ruby 3.2, 3.3, 3.4

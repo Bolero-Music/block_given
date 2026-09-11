@@ -1,5 +1,8 @@
---markup markdown
 --no-private
+--protected
+--markup markdown
+--title "block_given"
+--output-dir doc
 lib/**/*.rb
 -
 README.md

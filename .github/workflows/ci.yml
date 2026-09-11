@@ -24,6 +24,7 @@ jobs:
           bundler-cache: true
       - run: COVERAGE=1 bundle exec rspec
       - run: bundle exec rubocop
+      - run: bundle exec rake doc_check
       - run: gem build block_given.gemspec
 
   rails:

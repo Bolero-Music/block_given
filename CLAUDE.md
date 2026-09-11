@@ -10,7 +10,9 @@ Public API and behaviour are documented in `README.md`; this file is about how w
 bin/setup                       # bundle install (+ libsecp256k1 fallback)
 bundle exec rspec               # unit suite, no network (Stub connector + WebMock)
 bundle exec rubocop             # must be clean; rubocop -a fixes most style issues
-bundle exec rake ci             # rspec + rubocop + gem build — run before every commit
+bundle exec rake ci             # rspec + rubocop + doc_check + gem build — run before every commit
+bundle exec rake doc_check      # YARD coverage, 100% of the public API required (lists what is missing)
+bundle exec rake doc            # HTML API docs in doc/
 COVERAGE=1 bundle exec rspec    # SimpleCov, 90% line minimum enforced
 bin/matrix                      # Ruby 3.2/3.3/3.4 in Docker; bin/matrix rails 7.2 for the Rails suite
 ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CHAIN, BLOCK_GIVEN_ABI_PATH)
@@ -54,6 +56,9 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
 - **Watchers must be stoppable and resumable.** Any new `watch_*` goes through `Client#watcher` (registry, id,
   named thread), keeps only a cursor across ticks, and never advances the cursor before the block ran.
 - **Every user-visible change**: CHANGELOG line under `Unreleased`, README update when the API changes, specs.
+- **Every public method, class and constant has YARD docs** (`@param`, `@option` for every `tx:` / options key,
+  `@return`, `@yield*`, `@raise`, `@example` on entry points). `rake doc_check` fails under 100%; internal-but-public
+  methods carry `@api private`.
 - **Semver.** Breaking changes to `Contract`, `Wallet`, `Client`, connectors, `Utils` bump the major.
 - Commits: imperative summary under 72 chars, blank line, the why. Branch from `main`.
 

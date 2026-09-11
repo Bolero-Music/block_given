@@ -36,6 +36,9 @@ CI runs the same matrix on every push and pull request.
 - **`tx:` is the only reserved keyword** on contract methods; every other keyword maps to an ABI input.
   Transaction/call overrides go there, never as top-level keywords.
 - **No ABI ships in the gem.** Fixtures live in `spec/fixtures/`; applications own their ABIs.
+- **Document what you add.** Every public method, class and constant carries YARD tags (`@param`, `@option`
+  for each accepted key, `@return`, `@yield*`, `@raise`, `@example` on entry points). `bundle exec rake doc_check`
+  must report 100%; it lists what is missing. Mark internal helpers `@api private` rather than leaving them bare.
 - **Ruby 3.1 is the floor.** Avoid syntax newer than 3.1 (no `it` block param, no `Data.define`), and beware
   that an anonymous block `&` combined with keyword arguments is a syntax error on 3.1.
 - **Every user-visible change gets a CHANGELOG line** under `Unreleased`, and README docs when it adds API.
