@@ -142,6 +142,13 @@ module UncleBlockGiven
 
     # Signs and broadcasts. Returns a UncleBlockGiven::Transaction. Overrides: tx: { value:, gas:, nonce:, fees... }.
     def write(name, *args, tx: {}, **kwargs)
+      prepare_write(name, *args, tx: tx, **kwargs).broadcast
+    end
+
+    # Signs without broadcasting. Returns a UncleBlockGiven::SignedTransaction whose #hash and
+    # #nonce are known before any network call: persist them, then call #broadcast. The signed
+    # transaction keeps this contract's ABI, so reverts raised by #broadcast are decoded too.
+    def prepare_write(name, *args, tx: {}, **kwargs)
       function = resolve(name, args, kwargs)
       unless wallet
         raise WalletRequiredError,
@@ -156,11 +163,11 @@ module UncleBlockGiven
 
       data = function.encode(args, kwargs)
       with_decoded_errors do
-        wallet.send_transaction(
+        wallet.signed_transaction(
           to: address, data: data, value: value, gas: options[:gas], nonce: options[:nonce],
           max_fee_per_gas: options[:max_fee_per_gas], max_priority_fee_per_gas: options[:max_priority_fee_per_gas],
           gas_price: options[:gas_price]
-        )
+        ).with_interface(interface)
       end
     end
 

@@ -43,23 +43,22 @@ module UncleBlockGiven
       Utils.prefix_hex(@key.sign_typed_data(typed_data))
     end
 
-    # Fills in nonce / gas / fees from the client, signs and returns the raw tx hex.
-    # Pass gas_price: to build a legacy (type 0) transaction instead of EIP-1559.
-    def sign_transaction(to: nil, value: 0, data: nil, gas: nil, nonce: nil, max_fee_per_gas: nil,
-                         max_priority_fee_per_gas: nil, gas_price: nil, chain_id: nil, access_list: nil)
-      params = prepare_transaction(
-        to: to, value: value, data: data, gas: gas, nonce: nonce, max_fee_per_gas: max_fee_per_gas,
-        max_priority_fee_per_gas: max_priority_fee_per_gas, gas_price: gas_price, chain_id: chain_id,
-        access_list: access_list
-      )
-      tx = Eth::Tx.new(to_eth_tx_params(params))
+    # Fills in nonce / gas / fees from the client and signs, without broadcasting.
+    # Returns a UncleBlockGiven::SignedTransaction: its #hash and #nonce are known before
+    # any network call (persist them, then #broadcast). Same keywords as prepare_transaction;
+    # pass gas_price: to build a legacy (type 0) transaction instead of EIP-1559.
+    def signed_transaction(**params)
+      prepared = prepare_transaction(**params)
+      tx = Eth::Tx.new(to_eth_tx_params(prepared))
       tx.sign(@key)
-      Utils.prefix_hex(tx.hex)
+      SignedTransaction.new(raw: Utils.prefix_hex(tx.hex), params: prepared, wallet: self)
     end
 
-    def send_transaction(**params)
-      client.send_raw_transaction(sign_transaction(**params))
-    end
+    # Signs and returns the raw tx hex.
+    def sign_transaction(**params) = signed_transaction(**params).raw
+
+    # Signs and broadcasts. Returns a UncleBlockGiven::Transaction.
+    def send_transaction(**params) = signed_transaction(**params).broadcast
 
     # Resolves every missing field (nonce, gas, fees, chain id) without signing.
     def prepare_transaction(to: nil, value: 0, data: nil, gas: nil, nonce: nil, max_fee_per_gas: nil,

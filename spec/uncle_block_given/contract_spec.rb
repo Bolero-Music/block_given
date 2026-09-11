@@ -121,6 +121,37 @@ RSpec.describe UncleBlockGiven::Contract do
 
     it "requires a wallet" do
       expect { TestERC20.at(USDC_BASE).transfer(OTHER_ADDRESS, 1) }.to raise_error(UncleBlockGiven::WalletRequiredError)
+      expect { TestERC20.at(USDC_BASE).prepare_write(:transfer, OTHER_ADDRESS, 1) }.to raise_error(UncleBlockGiven::WalletRequiredError)
+    end
+
+    it "prepares a signed transaction whose hash is known before broadcasting" do
+      stub.stub("eth_sendRawTransaction", ->(params) { UncleBlockGiven::Utils.keccak256(params.first) })
+      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, amount: 1e6, tx: { nonce: 42 })
+
+      expect(signed).to be_a(UncleBlockGiven::SignedTransaction)
+      expect(signed.nonce).to eq(42)
+      expect(signed.to).to eq(USDC_BASE)
+      expect(signed.data).to eq(usdc.encode_function_data(:transfer, OTHER_ADDRESS, 1_000_000))
+      expect(stub.calls_for("eth_sendRawTransaction")).to be_empty
+
+      tx = signed.broadcast
+      expect(tx.hash).to eq(signed.hash)
+      expect(stub.calls_for("eth_sendRawTransaction")).to eq([[signed.raw]])
+      expect { usdc.prepare_write(:transfer, OTHER_ADDRESS, 1, tx: { value: 1 }) }.to raise_error(UncleBlockGiven::InvalidArgumentError, /not payable/)
+    end
+
+    it "decodes custom errors raised while broadcasting a prepared transaction" do
+      selector = UncleBlockGiven::Utils.keccak256("ERC20InsufficientBalance(address,uint256,uint256)")[0, 10]
+      revert_data = selector + UncleBlockGiven::Utils.strip_hex(abi_encode(%w[address uint256 uint256], [TEST_ADDRESS, 5, 1_000_000]))
+      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, amount: 1e6, tx: { gas: 60_000 })
+      stub.stub("eth_sendRawTransaction",
+                UncleBlockGiven::RpcError.from_payload({ "code" => 3, "message" => "execution reverted", "data" => revert_data }, rpc_method: "eth_sendRawTransaction"))
+
+      expect { signed.broadcast }.to raise_error(UncleBlockGiven::ContractRevertError) do |e|
+        expect(e.error_name).to eq("ERC20InsufficientBalance")
+        expect(e.args).to include(needed: 1_000_000)
+      end
+      expect { signed.replacement }.not_to raise_error
     end
 
     it "refuses to send value to non payable functions and unknown tx options" do

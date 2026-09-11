@@ -59,9 +59,9 @@ RSpec.describe UncleBlockGiven::Wallet do
     it "signs an EIP-1559 transaction the node can recover" do
       tx = wallet.send_transaction(to: OTHER_ADDRESS, value: 10**15, gas: 21_000)
       expect(tx).to be_a(UncleBlockGiven::Transaction)
-      expect(tx.hash).to eq("0x#{'ab' * 32}")
 
       raw = stub.calls_for("eth_sendRawTransaction").last.first
+      expect(tx.hash).to eq(UncleBlockGiven::Utils.keccak256(raw)) # local hash, not the node's answer
       expect(raw).to start_with("0x02")
       decoded = Eth::Tx.decode(raw)
       expect(decoded.sender.downcase).to eq(UncleBlockGiven::Utils.strip_hex(TEST_ADDRESS).downcase)
@@ -69,6 +69,14 @@ RSpec.describe UncleBlockGiven::Wallet do
       expect(decoded.amount).to eq(10**15)
       expect(decoded.chain_id).to eq(8453)
       expect(decoded.signer_nonce).to eq(5)
+    end
+
+    it "goes through a SignedTransaction whose hash matches the raw bytes" do
+      signed = wallet.signed_transaction(to: OTHER_ADDRESS, value: 1, gas: 21_000)
+      expect(signed).to be_a(UncleBlockGiven::SignedTransaction)
+      expect(wallet.sign_transaction(to: OTHER_ADDRESS, value: 1, gas: 21_000)).to eq(signed.raw)
+      expect(signed.hash).to eq("0x#{Eth::Tx.decode(signed.raw).hash}")
+      expect(stub.calls_for("eth_sendRawTransaction")).to be_empty
     end
 
     it "builds a legacy transaction when gas_price is given" do

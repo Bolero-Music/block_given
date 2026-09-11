@@ -16,12 +16,45 @@ module UncleBlockGiven
       @receipt = nil
     end
 
-    # Non-blocking: the receipt if the transaction is mined, nil otherwise.
+    # Non-blocking: the receipt if the transaction is mined, nil otherwise. Cached once
+    # found: call #reload (or build a fresh handle with client.transaction) to re-query the
+    # node, e.g. on every tick of a long-lived worker.
     def receipt
       @receipt ||= client.get_transaction_receipt(hash)
     end
 
+    def reload
+      @receipt = nil
+      self
+    end
+
     def mined? = !receipt.nil?
+
+    # One RPC round trip to classify the transaction (two while it is not mined):
+    #   :success / :reverted  mined, from the receipt status
+    #   :pending              known by the node, waiting in the mempool
+    #   :unknown              the node has never seen it, or dropped it: safe to re-broadcast
+    #                         the same signed bytes (see SignedTransaction#replacement)
+    def status
+      return receipt.status if mined?
+
+      details ? :pending : :unknown
+    end
+
+    def success? = mined? && receipt.success?
+    def reverted? = mined? && receipt.reverted?
+    def pending? = status == :pending
+    def unknown? = status == :unknown
+
+    # Blocks since inclusion, 1 when mined in the latest block, 0 while not mined.
+    def confirmations
+      return 0 unless mined?
+
+      [client.block_number - receipt.block_number + 1, 0].max
+    end
+
+    # Non-blocking counterpart of wait(confirmations:). Defaults to UncleBlockGiven.config.confirmations.
+    def confirmed?(count = nil) = confirmations >= (count || UncleBlockGiven.config.confirmations)
 
     def wait(confirmations: nil, timeout: nil, polling_interval: nil)
       @receipt = client.wait_for_transaction_receipt(

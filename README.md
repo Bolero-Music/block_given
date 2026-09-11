@@ -33,15 +33,30 @@ usdc.events_from(receipt)                       # => [#<UncleBlockGiven::Event T
 ## Table of contents
 
 - [Installation](#installation)
-- [Configuration](#configuration) · [Connectors](#connectors) · [Chains](#chains)
-- [Contracts](#contracts) · [Calling functions](#calling-functions) · [Transactions & receipts](#transactions--receipts) · [Reverts](#reverts)
+- [Configuration](#configuration)
+  - [Connectors](#connectors)
+  - [Chains](#chains)
+- [Contracts](#contracts)
+  - [Calling functions](#calling-functions)
+  - [Transactions & receipts](#transactions--receipts)
+  - [Reliable writes: sign first, broadcast later](#reliable-writes-sign-first-broadcast-later)
+  - [Reverts](#reverts)
 - [Events](#events)
-- [Polling](#polling) · [Listing, stopping and killing watchers](#listing-stopping-and-killing-watchers) · [How watchers behave](#how-watchers-behave)
-- [Wallet](#wallet) · [Client (low level)](#client-low-level) · [Utils](#utils)
+- [Polling](#polling)
+  - [Listing, stopping and killing watchers](#listing-stopping-and-killing-watchers)
+  - [How watchers behave](#how-watchers-behave)
+- [Wallet](#wallet)
+- [Client (low level)](#client-low-level)
+- [Utils](#utils)
 - [Testing your code](#testing-your-code)
-- [Compatibility](#compatibility) · [Rails integration](#rails-integration)
-- [Development](#development) · [Versioning & releases](#versioning--releases)
-- [Security](#security) · [Contributing](#contributing) · [Roadmap](#roadmap) · [License](#license)
+- [Compatibility](#compatibility)
+  - [Rails integration](#rails-integration)
+- [Development](#development)
+  - [Versioning & releases](#versioning--releases)
+- [Security](#security)
+- [Contributing](#contributing)
+- [Roadmap](#roadmap)
+- [License](#license)
 
 ## Installation
 
@@ -160,7 +175,38 @@ receipt = tx.wait(confirmations: 2, timeout: 300, polling_interval: 1)
 receipt.status               # :success / :reverted
 receipt.gas_used, receipt.fee, receipt.block_number, receipt.logs
 tx.wait!                     # raises UncleBlockGiven::TransactionRevertedError when status is :reverted
+tx.status                    # :success / :reverted (mined), :pending (in the mempool), :unknown (never seen or dropped)
+tx.confirmations             # blocks since inclusion (non-blocking), tx.confirmed?(5)
+client.transaction("0x...")  # the same handle for a hash you persisted earlier
 ```
+
+### Reliable writes: sign first, broadcast later
+
+A transaction hash is the keccak of the signed bytes, so it is known **before** anything is sent.
+`prepare_write` (or `Wallet#signed_transaction`) signs without broadcasting; persist the hash and
+nonce, then broadcast. If the RPC call times out you still know exactly which transaction to look for,
+and a same-nonce replacement can never be mined twice.
+
+```ruby
+signed = registry.prepare_write(:record, movement_id, tx: { nonce: call.nonce })
+signed.hash, signed.nonce, signed.raw          # known now; signed.to_h for persistence
+call.update!(tx_hash: signed.hash, status: :submitted)
+signed.broadcast                               # eth_sendRawTransaction, returns the Transaction
+
+# later, one tick of your outbox worker (possibly another process: rebuild from the persisted bytes)
+signed = UncleBlockGiven::SignedTransaction.from_raw(call.raw_tx, wallet: wallet, interface: registry.interface)
+tx = signed.transaction                                   # same as client.transaction(call.tx_hash)
+case tx.status
+when :success  then call.confirmed! if tx.confirmed?(5)   # registry.events_from(tx.receipt) has the logs
+when :reverted then call.failed!
+when :unknown  then signed.broadcast                      # dropped by the node: resend the same bytes
+when :pending  then signed.replacement.broadcast if call.submitted_at < 5.minutes.ago
+end
+```
+
+`replacement(fee_multiplier: 1.125)` re-signs the same payload and nonce with fees raised by the
+multiplier (at least 10%, otherwise nodes reject it as underpriced) and never below a fresh estimate. If
+the original gets mined first, the replacement is rejected for its nonce and `tx.status` tells you so.
 
 ### Reverts
 
@@ -282,6 +328,7 @@ wallet.sign_typed_data(typed_data)          # EIP-712
 wallet.send_transaction(to: addr, value: UncleBlockGiven::Utils.parse_ether("0.01")).wait
 wallet.send_transaction(to: addr, data: "0x...", gas_price: UncleBlockGiven::Utils.parse_gwei("2"))  # legacy type-0 tx
 wallet.prepare_transaction(to: addr, data: "0x...")   # resolved nonce/gas/fees without signing
+wallet.signed_transaction(to: addr, data: "0x...")    # signed, not broadcast: #hash, #nonce, #broadcast, #replacement
 ```
 
 Missing fields are filled from the client: pending nonce, `eth_estimateGas * gas_multiplier`,

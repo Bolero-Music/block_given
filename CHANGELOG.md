@@ -16,6 +16,11 @@ Initial release.
 - `UncleBlockGiven::Wallet`: EIP-1559 and legacy signing, EIP-191 / EIP-712, automatic nonce, gas and fee resolution.
 - `UncleBlockGiven::Client`: JSON-RPC client (blocks, balances, calls, receipts, logs), EIP-1559 fee estimation,
   `wait_for_transaction_receipt`, `get_logs_in_chunks`.
+- `UncleBlockGiven::SignedTransaction` (`Contract#prepare_write`, `Wallet#signed_transaction`): sign without
+  broadcasting, hash and nonce known before any network call, `broadcast`, `replacement(fee_multiplier:)` for
+  same-nonce fee bumps, `.from_raw` to rebuild one from persisted bytes. `Transaction#hash` is computed locally
+  from the signed bytes (a differing node answer is logged). `Transaction#status` (`:success` / `:reverted` /
+  `:pending` / `:unknown`), `#confirmations`, `#confirmed?`, `#reload` for non-blocking outbox workers.
 - Connectors: Alchemy (endpoint derived from the chain), generic HTTP with retries and backoff, in-memory Stub
   for tests. Secrets are masked in `inspect`, logs and error messages.
 - Events: `get_events` with indexed filters, `watch_event` polling with chunked catch-up (`from_block`,
