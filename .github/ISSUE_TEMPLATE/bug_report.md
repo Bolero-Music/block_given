@@ -14,7 +14,7 @@ labels: bug
 **Expected behavior**
 
 **Environment**
-- uncle_block_given version:
+- block_given version:
 - Ruby version:
 - Rails version (if any):
 - Connector / chain:

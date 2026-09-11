@@ -2,18 +2,18 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "uncle_block_given"
+require "block_given"
 require "irb"
 
 if ENV["ALCHEMY_API_KEY"]
-  UncleBlockGiven.configure do |c|
-    c.connector = UncleBlockGiven::Connectors::Alchemy.new(api_key: ENV["ALCHEMY_API_KEY"])
-    c.chain = ENV.fetch("UNCLE_BLOCK_GIVEN_CHAIN", "base").to_sym
-    c.abi_path = ENV["UNCLE_BLOCK_GIVEN_ABI_PATH"] if ENV["UNCLE_BLOCK_GIVEN_ABI_PATH"]
+  BlockGiven.configure do |c|
+    c.connector = BlockGiven::Connectors::Alchemy.new(api_key: ENV["ALCHEMY_API_KEY"])
+    c.chain = ENV.fetch("BLOCK_GIVEN_CHAIN", "base").to_sym
+    c.abi_path = ENV["BLOCK_GIVEN_ABI_PATH"] if ENV["BLOCK_GIVEN_ABI_PATH"]
   end
-  puts "UncleBlockGiven configured for #{UncleBlockGiven.config.chain.name} via Alchemy"
+  puts "BlockGiven configured for #{BlockGiven.config.chain.name} via Alchemy"
 else
-  puts "Set ALCHEMY_API_KEY to get a configured client (UncleBlockGiven.client)"
+  puts "Set ALCHEMY_API_KEY to get a configured client (BlockGiven.client)"
 end
 
 IRB.start(__FILE__)

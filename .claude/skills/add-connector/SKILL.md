@@ -1,12 +1,12 @@
 ---
 name: add-connector
-description: Implement a new JSON-RPC connector/transport (Infura, QuickNode, WebSocket, local node) or change HTTP retry/redaction behaviour. Use when touching lib/uncle_block_given/connectors.
+description: Implement a new JSON-RPC connector/transport (Infura, QuickNode, WebSocket, local node) or change HTTP retry/redaction behaviour. Use when touching lib/block_given/connectors.
 ---
 
 # Add a connector
 
 A connector is a transport: `request(method, params, chain:)` returns the JSON-RPC `result` or raises
-`UncleBlockGiven::RpcError`. Everything above it (Client, Contract) stays unchanged.
+`BlockGiven::RpcError`. Everything above it (Client, Contract) stays unchanged.
 
 ## Steps
 
@@ -22,7 +22,7 @@ A connector is a transport: `request(method, params, chain:)` returns the JSON-R
 4. **Errors**: HTTP failures → `HttpError` (status, body); JSON-RPC errors → `RpcError.from_payload` (which
    detects reverts). Retry only on `RETRIABLE_STATUSES` / `RETRIABLE_RPC_CODES` / connection exceptions, with
    the existing backoff. Never retry a revert.
-5. **Specs** in `spec/uncle_block_given/connectors/<name>_spec.rb` using WebMock (`stub_request`): endpoint per chain,
+5. **Specs** in `spec/block_given/connectors/<name>_spec.rb` using WebMock (`stub_request`): endpoint per chain,
    happy path, RPC error payload, retry on 429 then success, error message contains the host but not the key,
    `inspect` without the key.
 6. **Docs**: README "Connectors" table row + CHANGELOG.

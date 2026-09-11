@@ -1,11 +1,11 @@
-# Contributing to UncleBlockGiven
+# Contributing to BlockGiven
 
 Thanks for helping. This document covers setup, how we test, and the conventions reviewers will look for.
 
 ## Setup
 
 ```bash
-git clone git@github.com:Bolero-Music/uncle_block_given.git && cd uncle_block_given
+git clone git@github.com:Bolero-Music/block_given.git && cd block_given
 bin/setup            # bundle install, with the libsecp256k1 hint if the native build fails
 bundle exec rspec
 bundle exec rubocop
@@ -29,7 +29,7 @@ CI runs the same matrix on every push and pull request.
 
 ## Conventions
 
-- **No network in specs.** Use `UncleBlockGiven::Connectors::Stub` for RPC responses and WebMock for the HTTP layer.
+- **No network in specs.** Use `BlockGiven::Connectors::Stub` for RPC responses and WebMock for the HTTP layer.
   A read-only check against a public RPC is fine locally, never in the suite.
 - **Secrets never reach logs.** Anything that can end up in `inspect`, an exception message or a log line
   goes through `Http#redact` or an equivalent. Add a spec proving the key is absent.
@@ -55,13 +55,13 @@ pre-approves the test and lint commands and asks before anything outward-facing 
 1. Branch from `main`, keep the PR focused.
 2. Add specs for the change (unit, plus a Rails compat consideration if it touches loading or logging).
 3. Update `CHANGELOG.md` and, if relevant, `README.md`.
-4. Make sure `bundle exec rspec`, `bundle exec rubocop` and `gem build uncle_block_given.gemspec` pass.
+4. Make sure `bundle exec rspec`, `bundle exec rubocop` and `gem build block_given.gemspec` pass.
 5. Describe the motivation in the PR; link the issue if there is one.
 
 Commit messages: imperative summary line under 72 characters, blank line, then the why.
 
 ## Releasing (maintainers)
 
-See the "Versioning & releases" section of the README. In short: bump `lib/uncle_block_given/version.rb`, move the
+See the "Versioning & releases" section of the README. In short: bump `lib/block_given/version.rb`, move the
 `Unreleased` notes under the new version with today's date, commit, then `bundle exec rake release`
 (or push a `vX.Y.Z` tag to let the release workflow publish through RubyGems trusted publishing).

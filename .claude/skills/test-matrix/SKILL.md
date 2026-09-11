@@ -17,8 +17,8 @@ bin/matrix rails 8.0 3.4        # Rails 8.0 under Docker Ruby 3.4
 
 ## How the Rails suite works
 
-`RAILS_COMPAT=1` makes `spec_helper.rb` `require "rails/all"` before `uncle_block_given`, so `UncleBlockGiven::Railtie` loads and
-`spec/uncle_block_given/railtie_spec.rb` runs (it boots a minimal `Rails::Application` and checks the logger wiring).
+`RAILS_COMPAT=1` makes `spec_helper.rb` `require "rails/all"` before `block_given`, so `BlockGiven::Railtie` loads and
+`spec/block_given/railtie_spec.rb` runs (it boots a minimal `Rails::Application` and checks the logger wiring).
 Gemfiles are in `gemfiles/rails_<version>.gemfile` and use `gemspec path: "../"`.
 
 ## Known pitfalls
@@ -30,5 +30,5 @@ Gemfiles are in `gemfiles/rails_<version>.gemfile` and use `gemspec path: "../"`
 - Rails 7.1+ wraps `config.logger` in `ActiveSupport::BroadcastLogger`: compare with `Rails.logger`, not the
   logger you passed.
 - Watcher specs poll with `sleep 0.01 until ... || deadline`; always `watcher.stop.join(1)` so no thread
-  leaks into the next example (`UncleBlockGiven.reset!` in `before`/`after` also stops all watchers).
+  leaks into the next example (`BlockGiven.reset!` in `before`/`after` also stops all watchers).
 - Docker runs copy the repo read-only and delete lock files, so they never touch your local `Gemfile.lock`.

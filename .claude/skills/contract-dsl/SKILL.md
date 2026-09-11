@@ -1,6 +1,6 @@
 ---
 name: contract-dsl
-description: Change how UncleBlockGiven::Contract or the ABI layer behaves (argument coercion, output formatting, overloads, tx: options, events, revert decoding). Use before editing lib/uncle_block_given/contract.rb or lib/uncle_block_given/abi.
+description: Change how BlockGiven::Contract or the ABI layer behaves (argument coercion, output formatting, overloads, tx: options, events, revert decoding). Use before editing lib/block_given/contract.rb or lib/block_given/abi.
 ---
 
 # Contract DSL and ABI layer
@@ -25,12 +25,12 @@ pointing at `parse_units`); addresses accept anything responding to `#address`; 
 names, any case) or Array; bytes accept hex or binary. Outputs: addresses checksummed, bytes as `0x` hex,
 named tuples as Hash with snake_case symbol keys, single output unwrapped, several as Array.
 
-When adding a type rule, add cases to `spec/uncle_block_given/abi/interface_spec.rb` (encode + decode round trip through
+When adding a type rule, add cases to `spec/block_given/abi/interface_spec.rb` (encode + decode round trip through
 `Eth::Abi` in `abi_encode`).
 
 ## Events
 
-`Abi::Event#decode(log)` → `UncleBlockGiven::Event` with args in declaration order; indexed dynamic types keep the
+`Abi::Event#decode(log)` → `BlockGiven::Event` with args in declaration order; indexed dynamic types keep the
 topic hash. `encode_topics(args)` builds the filter (nil wildcard, Array = OR, trailing nils trimmed).
 
 ## Reverts
