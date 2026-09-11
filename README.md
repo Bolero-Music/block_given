@@ -1,9 +1,14 @@
 # Vium
 
-A small, explicit Ruby toolkit to read from and write to EVM smart contracts, inspired by
-[viem](https://viem.sh). Declare a contract class from its ABI and every function becomes a Ruby method;
-wallets sign EIP-1559 transactions; connectors (Alchemy first) talk JSON-RPC; polling helpers wait for
-receipts, blocks and events.
+[![CI](https://github.com/Bolero-Music/vium/actions/workflows/ci.yml/badge.svg)](https://github.com/Bolero-Music/vium/actions/workflows/ci.yml)
+[![Gem Version](https://badge.fury.io/rb/vium.svg)](https://rubygems.org/gems/vium)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
+![Ruby 3.1+](https://img.shields.io/badge/ruby-%3E%3D%203.1-cc342d)
+
+**Ruby client for EVM smart contracts, inspired by [viem](https://viem.sh).**
+Declare a contract class from its ABI and every function becomes a Ruby method. Wallets sign EIP-1559
+transactions, connectors (Alchemy first) speak JSON-RPC, and polling helpers wait for receipts, blocks and
+events with resumable cursors.
 
 ```ruby
 Vium.configure do |c|
@@ -25,32 +30,18 @@ receipt = tx.wait!                              # polls until mined, raises if r
 usdc.events_from(receipt)                       # => [#<Vium::Event Transfer {from:, to:, value: 1000000}>]
 ```
 
-## Compatibility
+## Table of contents
 
-|        | Supported                                  | Verified by                                                   |
-| ------ | ------------------------------------------ | ------------------------------------------------------------- |
-| Ruby   | >= 3.1 (3.1, 3.2, 3.3, 3.4)                | CI matrix + local run on each version                         |
-| Rails  | optional, 7.0 / 7.1 / 7.2 / 8.0            | full suite run with Rails loaded (`gemfiles/rails_*.gemfile`) |
-| `eth`  | ~> 0.5, >= 0.5.17 (tuple ABI support)      | pinned in the gemspec                                         |
-| stdlib | `bigdecimal`, `logger` declared explicitly | bundled gems in Ruby 3.4 / 3.5                                |
-
-Vium has no runtime dependency on Rails or ActiveSupport: it is plain Ruby and works in scripts,
-Sidekiq workers, Rails apps or Hanami alike.
-
-### Rails integration
-
-```ruby
-# config/initializers/vium.rb
-Vium.configure do |c|
-  c.connector = Vium::Connectors::Alchemy.new(api_key: Rails.application.credentials.alchemy_api_key)
-  c.chain = Rails.env.production? ? :base : :base_sepolia
-  c.abi_path = Rails.root.join("abis")
-end
-```
-
-A railtie (loaded automatically when Rails is present) routes Vium's logs to `Rails.logger`
-unless the initializer sets `c.logger` itself. Contract classes live wherever you want
-(`app/contracts/usdc.rb` works with Zeitwerk out of the box) and ABI files in `abis/`.
+- [Installation](#installation)
+- [Configuration](#configuration) · [Connectors](#connectors) · [Chains](#chains)
+- [Contracts](#contracts) · [Calling functions](#calling-functions) · [Transactions & receipts](#transactions--receipts) · [Reverts](#reverts)
+- [Events](#events)
+- [Polling](#polling) · [Listing, stopping and killing watchers](#listing-stopping-and-killing-watchers) · [How watchers behave](#how-watchers-behave)
+- [Wallet](#wallet) · [Client (low level)](#client-low-level) · [Utils](#utils)
+- [Testing your code](#testing-your-code)
+- [Compatibility](#compatibility) · [Rails integration](#rails-integration)
+- [Development](#development) · [Versioning & releases](#versioning--releases)
+- [Security](#security) · [Contributing](#contributing) · [Roadmap](#roadmap) · [License](#license)
 
 ## Installation
 
@@ -340,18 +331,48 @@ stub.calls               # => [["eth_call", [...]], ...]
 stub.calls_for("eth_sendRawTransaction")
 ```
 
+## Compatibility
+
+|        | Supported                                  | Verified by                                                   |
+| ------ | ------------------------------------------ | ------------------------------------------------------------- |
+| Ruby   | >= 3.1 (3.1, 3.2, 3.3, 3.4)                | CI matrix + local run on each version                         |
+| Rails  | optional, 7.0 / 7.1 / 7.2 / 8.0            | full suite run with Rails loaded (`gemfiles/rails_*.gemfile`) |
+| `eth`  | ~> 0.5, >= 0.5.17 (tuple ABI support)      | pinned in the gemspec                                         |
+| stdlib | `bigdecimal`, `logger` declared explicitly | bundled gems in Ruby 3.4 / 3.5                                |
+
+Vium has no runtime dependency on Rails or ActiveSupport: it is plain Ruby and works in scripts,
+Sidekiq workers, Rails apps or Hanami alike.
+
+### Rails integration
+
+```ruby
+# config/initializers/vium.rb
+Vium.configure do |c|
+  c.connector = Vium::Connectors::Alchemy.new(api_key: Rails.application.credentials.alchemy_api_key)
+  c.chain = Rails.env.production? ? :base : :base_sepolia
+  c.abi_path = Rails.root.join("abis")
+end
+```
+
+A railtie (loaded automatically when Rails is present) routes Vium's logs to `Rails.logger`
+unless the initializer sets `c.logger` itself. Contract classes live wherever you want
+(`app/contracts/usdc.rb` works with Zeitwerk out of the box) and ABI files in `abis/`.
+
 ## Development
 
 ```bash
-bundle install
+bin/setup                            # bundle install (+ libsecp256k1 fallback)
 bundle exec rspec                    # unit suite (Stub connector, no network)
 COVERAGE=1 bundle exec rspec         # + SimpleCov report in coverage/ (minimum 90% lines)
 bundle exec rubocop
 ALCHEMY_API_KEY=... bin/console      # IRB with Vium configured for VIUM_CHAIN (default base)
 
-# Rails compatibility suites
-BUNDLE_GEMFILE=gemfiles/rails_7.2.gemfile bundle install
-RAILS_COMPAT=1 BUNDLE_GEMFILE=gemfiles/rails_7.2.gemfile bundle exec rspec
+bundle exec rake ci                  # specs + rubocop + gem build
+
+# Ruby / Rails matrix (Docker for the Rubies you do not have locally)
+bin/matrix                           # Ruby 3.2, 3.3, 3.4
+bin/matrix rails 7.2                 # Rails 7.2 compat suite, local Ruby
+bin/matrix rails 8.0 3.4             # Rails 8.0 under Ruby 3.4
 ```
 
 CI runs the suite on Ruby 3.1 to 3.4 and against Rails 7.0, 7.1, 7.2 and 8.0 (`.github/workflows/ci.yml`).
@@ -365,7 +386,22 @@ only once they reach end of life, Rails versions are tested while they receive s
 constraint is only tightened when a feature needs it.
 
 To release: bump `lib/vium/version.rb`, move the `Unreleased` notes under the new version in `CHANGELOG.md`,
-then `bundle exec rake release` (builds the gem, tags `vX.Y.Z`, pushes to rubygems).
+commit, then push a `vX.Y.Z` tag. The release workflow checks the tag against the version, runs the suite and
+publishes through RubyGems trusted publishing (no API key in CI). `bundle exec rake release` does the same
+from a maintainer machine with RubyGems credentials.
+
+## Security
+
+- Private keys never leave `Vium::Wallet`; `inspect` hides them and API keys are masked in every log and
+  error message (`Http#redact`).
+- Never commit keys: use `ENV`, Rails credentials or Hardhat vars, and keep `.env` out of git (see `.env.example`).
+- Report a vulnerability privately to remi@boleromusic.com rather than in a public issue. See [SECURITY.md](SECURITY.md).
+
+## Contributing
+
+Bug reports and pull requests are welcome on [GitHub](https://github.com/Bolero-Music/vium). Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) (setup, test matrix, conventions) and the
+[code of conduct](CODE_OF_CONDUCT.md).
 
 ## Roadmap
 
@@ -377,4 +413,4 @@ then `bundle exec rake release` (builds the gem, tags `vX.Y.Z`, pushes to rubyge
 
 ## License
 
-MIT
+Released under the [MIT License](LICENSE.txt).

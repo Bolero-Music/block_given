@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Runs the test suite across Ruby versions (Docker) and Rails versions.
+#
+#   bin/matrix                 # rspec + rubocop on Ruby 3.2, 3.3, 3.4 (Docker)
+#   bin/matrix 3.4             # one Ruby version
+#   bin/matrix rails 7.2       # Rails compat suite with the local Ruby
+#   bin/matrix rails 8.0 3.4   # Rails compat suite under a Docker Ruby
+set -euo pipefail
+cd "$(dirname "$0")/.."
+ROOT="$(pwd)"
+
+run_ruby() {
+  local tag="$1"
+  echo "=== Ruby ${tag}"
+  docker run --rm -v "${ROOT}:/src:ro" -e BUNDLE_PATH=/tmp/bundle \
+    -e BUNDLE_BUILD__RBSECP256K1=--with-system-library "ruby:${tag}" bash -c '
+      set -e
+      cp -r /src /app && cd /app && rm -f Gemfile.lock gemfiles/*.lock
+      apt-get update -qq >/dev/null && apt-get install -y -qq build-essential pkg-config libsecp256k1-dev >/dev/null 2>&1
+      bundle install --quiet
+      ruby -v
+      bundle exec rspec --format progress 2>&1 | tail -3
+      bundle exec rubocop 2>&1 | tail -1
+    '
+}
+
+run_rails() {
+  local rails="$1" ruby_tag="${2:-}"
+  local gemfile="gemfiles/rails_${rails}.gemfile"
+  [ -f "$gemfile" ] || { echo "no ${gemfile} (available: $(ls gemfiles | sed 's/rails_//;s/.gemfile//' | tr '\n' ' '))"; exit 1; }
+  echo "=== Rails ${rails}${ruby_tag:+ / Ruby ${ruby_tag}}"
+  if [ -z "$ruby_tag" ]; then
+    BUNDLE_GEMFILE="$gemfile" bundle install --quiet
+    RAILS_COMPAT=1 BUNDLE_GEMFILE="$gemfile" bundle exec rspec --format progress 2>&1 | tail -3
+  else
+    docker run --rm -v "${ROOT}:/src:ro" -e BUNDLE_PATH=/tmp/bundle -e BUNDLE_GEMFILE="$gemfile" \
+      -e BUNDLE_BUILD__RBSECP256K1=--with-system-library "ruby:${ruby_tag}" bash -c '
+        set -e
+        cp -r /src /app && cd /app && rm -f Gemfile.lock gemfiles/*.lock
+        apt-get update -qq >/dev/null && apt-get install -y -qq build-essential pkg-config libsecp256k1-dev >/dev/null 2>&1
+        bundle install --quiet
+        bundle exec ruby -e "require %q(rails); puts %(rails #{Rails.version} / ruby #{RUBY_VERSION})"
+        RAILS_COMPAT=1 bundle exec rspec --format progress 2>&1 | tail -3
+      '
+  fi
+}
+
+case "${1:-all}" in
+  all) for tag in 3.2 3.3 3.4; do run_ruby "$tag"; done ;;
+  rails) run_rails "${2:?usage: bin/matrix rails <7.0|7.1|7.2|8.0> [ruby-tag]}" "${3:-}" ;;
+  *) run_ruby "$1" ;;
+esac

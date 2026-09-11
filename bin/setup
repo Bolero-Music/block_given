@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Installs dependencies. The eth gem needs libsecp256k1; falls back to the system library when the
+# bundled build fails (its download hash is sometimes stale).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+if bundle install; then
+  echo "Done. Run: bundle exec rspec"
+  exit 0
+fi
+
+echo
+echo "bundle install failed, most likely on rbsecp256k1. Trying the system libsecp256k1..."
+if command -v brew >/dev/null 2>&1; then
+  brew list secp256k1 >/dev/null 2>&1 || brew install secp256k1
+elif command -v apt-get >/dev/null 2>&1; then
+  sudo apt-get update && sudo apt-get install -y libsecp256k1-dev build-essential pkg-config
+fi
+bundle config set --local build.rbsecp256k1 --with-system-library
+bundle install
+echo "Done. Run: bundle exec rspec"
