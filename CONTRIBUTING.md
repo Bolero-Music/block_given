@@ -35,7 +35,8 @@ CI runs the same matrix on every push and pull request.
   goes through `Http#redact` or an equivalent. Add a spec proving the key is absent.
 - **`tx:` is the only reserved keyword** on contract methods; every other keyword maps to an ABI input.
   Transaction/call overrides go there, never as top-level keywords.
-- **No ABI ships in the gem.** Fixtures live in `spec/fixtures/`; applications own their ABIs.
+- **No application ABI ships in the gem.** Only frozen standards do (`lib/block_given/abis/`, EIP-20/721/1155/4626);
+  applications own the ABIs of their own contracts. Spec fixtures live in `spec/fixtures/`.
 - **Ruby 3.1 is the floor.** Avoid syntax newer than 3.1 (no `it` block param, no `Data.define`), and beware
   that an anonymous block `&` combined with keyword arguments is a syntax error on 3.1.
 - **Every user-visible change gets a CHANGELOG line** under `Unreleased`, and README docs when it adds API.

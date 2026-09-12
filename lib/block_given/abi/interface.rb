@@ -8,7 +8,8 @@ module BlockGiven
     class Interface
       attr_reader :functions, :events, :errors, :constructor, :raw
 
-      # Accepts an ABI Array, a Hardhat/Foundry artifact Hash (with "abi"), a JSON String or a Pathname.
+      # Accepts an ABI Array, a Hardhat/Foundry artifact Hash (with "abi"), a JSON String, a Pathname
+      # or the Symbol name of a shipped ABI (Abis.fetch).
       def self.parse(source)
         return source if source.is_a?(Interface)
 
@@ -18,6 +19,7 @@ module BlockGiven
       def self.load_definitions(source)
         case source
         when Array then source
+        when Symbol then Abis.fetch(source)
         when Hash then source["abi"] || source[:abi] || raise(AbiError, "Hash has no 'abi' key")
         when Pathname, File then load_definitions(JSON.parse(File.read(source)))
         when String then load_definitions(JSON.parse(source))

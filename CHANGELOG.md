@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `BlockGiven::Abis`: the ERC20, ERC721, ERC1155 and ERC4626 interfaces ship as frozen ABI arrays (EIP functions and
+  events, metadata / ERC-165 / enumerable extensions, ERC-6093 custom errors). `Contract.abi` accepts their Symbol
+  name (`abi :erc20`), `Abis.fetch("ERC-721")` returns the array, `Abis.names` lists them.
+
 ## [0.1.0] - 2026-09-11
 
 Initial release.

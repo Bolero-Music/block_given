@@ -17,7 +17,7 @@ BlockGiven.configure do |c|
 end
 
 class Usdc < BlockGiven::Contract
-  abi_file "abis/erc20.json"   # ABIs live in your repo, not in the gem
+  abi :erc20                   # shipped standard; your own contracts use abi_file "abis/catalog.json"
   address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 end
 
@@ -37,6 +37,7 @@ usdc.events_from(receipt)                       # => [#<BlockGiven::Event Transf
   - [Connectors](#connectors)
   - [Chains](#chains)
 - [Contracts](#contracts)
+  - [Standard ABIs](#standard-abis)
   - [Calling functions](#calling-functions)
   - [Transactions & receipts](#transactions--receipts)
   - [Reliable writes: sign first, broadcast later](#reliable-writes-sign-first-broadcast-later)
@@ -112,13 +113,13 @@ client = BlockGiven::Client.new(chain: fork, connector: BlockGiven::Connectors::
 
 ## Contracts
 
-The gem ships no ABI: keep them in your repository (`abis/*.json`, or the Hardhat/Foundry artifacts) and
-point each contract class at its file. With `BlockGiven.config.abi_path = Rails.root.join("abis")` relative
-names resolve from that directory.
+The ABI comes either from a standard the gem ships (`abi :erc20`, see below) or from your repository
+(`abis/*.json`, or the Hardhat/Foundry artifacts) through `abi_file`. With
+`BlockGiven.config.abi_path = Rails.root.join("abis")` relative names resolve from that directory.
 
 ```ruby
 class Usdc < BlockGiven::Contract
-  abi_file "erc20.json"                              # ABI array, Hardhat/Foundry artifact ({ "abi": [...] }), or JSON string via `abi`
+  abi :erc20                                         # or abi_file "catalog.json": ABI array, Hardhat/Foundry artifact, JSON string
   address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" # optional default address (USDC on Base)
   chain :base                                        # optional: pins the chain regardless of the global config
 end
@@ -127,6 +128,31 @@ usdc = Usdc.new(wallet: wallet)                                          # defau
 usdc = Usdc.at("0x036CbD53842c5426634e7929541eC2318f3dCF7e", wallet: wallet)  # explicit address (USDC on Base Sepolia)
 usdc = Usdc.at("0x036CbD53842c5426634e7929541eC2318f3dCF7e")                 # read-only (no wallet)
 ```
+
+### Standard ABIs
+
+`BlockGiven::Abis` ships the token standards as frozen ABI arrays, so the usual `erc20.json` download is not
+needed and the keyword names below are guaranteed: `ERC20`, `ERC721`, `ERC1155` and `ERC4626`. Each one
+carries the EIP functions and events, the usual extensions (metadata, ERC-165 `supportsInterface`, ERC-721
+enumerable) and the [ERC-6093](https://eips.ethereum.org/EIPS/eip-6093) custom errors, so reverts from
+OpenZeppelin-based tokens decode by name. Input names follow OpenZeppelin (`transfer(to, amount)`).
+
+```ruby
+class Usdc < BlockGiven::Contract
+  abi :erc20                                   # Symbol name of a shipped ABI
+end
+
+class SongShares < BlockGiven::Contract
+  abi BlockGiven::Abis::ERC1155                # the constant works too
+end
+
+BlockGiven::Abis.fetch("ERC-721")            # => the ABI Array; extend it: abi BlockGiven::Abis::ERC721 + extra_definitions
+BlockGiven::Abis.names                       # => [:erc20, :erc721, :erc1155, :erc4626]
+```
+
+ERC-721 has two `safeTransferFrom` overloads: positional calls pick one by arity, otherwise use the full
+signature (`nft.write("safeTransferFrom(address,address,uint256,bytes)", ...)`). Your own contracts keep their
+ABIs in the application (`abi_file`): they change with every deployment and the gem must not pin them.
 
 ### Calling functions
 
@@ -360,7 +386,7 @@ Token helpers are one method away in your own contract class:
 
 ```ruby
 class Erc20 < BlockGiven::Contract
-  abi_file "erc20.json"
+  abi :erc20
   def decimals = @decimals ||= read(:decimals)
   def parse_amount(value) = BlockGiven::Utils.parse_units(value, decimals)    # "1.5" -> 1_500_000
   def format_amount(value) = BlockGiven::Utils.format_units(value, decimals)  # 1_500_000 -> "1.5"
