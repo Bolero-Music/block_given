@@ -462,7 +462,9 @@ Bug reports and pull requests are welcome on [GitHub](https://github.com/Bolero-
 - Contract deployment (`Contract.deploy`)
 - Multi-contract indexer helper with pluggable cursor store
 - Human-readable ABI (`parse_abi("function transfer(address to, uint256 amount)")`)
-- WebSocket connector for push-based subscriptions
+- WebSocket connector (`eth_subscribe`) so `watch_*` helpers wake up on pushed `newHeads` / `logs` instead of
+  sleeping between polls, keeping the same range-based catch-up and cursor, with polling as the fallback when the
+  socket drops
 - Multicall batching of reads
 
 ## License
