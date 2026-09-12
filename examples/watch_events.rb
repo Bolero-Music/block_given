@@ -8,11 +8,10 @@ BlockGiven.configure do |c|
   c.connector = BlockGiven::Connectors::Alchemy.new(api_key: ENV.fetch("ALCHEMY_API_KEY"))
   c.chain = :base
   c.polling_interval = 3
-  c.abi_path = File.expand_path("../abis", __dir__)
 end
 
 class Erc20 < BlockGiven::Contract
-  abi_file "erc20.json"
+  abi :erc20
   def format_amount(value) = BlockGiven::Utils.format_units(value, @decimals ||= read(:decimals))
 end
 

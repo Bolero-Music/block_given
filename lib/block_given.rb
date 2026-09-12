@@ -24,6 +24,7 @@ require_relative "block_given/abi/function"
 require_relative "block_given/abi/event"
 require_relative "block_given/abi/custom_error"
 require_relative "block_given/abi/interface"
+require_relative "block_given/abis"
 require_relative "block_given/event"
 require_relative "block_given/contract"
 require_relative "block_given/railtie" if defined?(Rails::Railtie)

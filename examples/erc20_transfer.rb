@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 # ALCHEMY_API_KEY=... PRIVATE_KEY=0x... bundle exec ruby examples/erc20_transfer.rb
-# Expects the ERC20 ABI in your repo, e.g. abis/erc20.json (an OpenZeppelin ABI works).
 require "bundler/setup"
 require "block_given"
 
@@ -9,11 +8,10 @@ BlockGiven.configure do |c|
   c.connector = BlockGiven::Connectors::Alchemy.new(api_key: ENV.fetch("ALCHEMY_API_KEY"))
   c.chain = :base_sepolia
   c.polling_interval = 2
-  c.abi_path = File.expand_path("../abis", __dir__)
 end
 
 class Erc20 < BlockGiven::Contract
-  abi_file "erc20.json"
+  abi :erc20
 
   def decimals = @decimals ||= read(:decimals)
   def parse_amount(value) = BlockGiven::Utils.parse_units(value, decimals)

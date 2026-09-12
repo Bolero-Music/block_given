@@ -29,9 +29,10 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
 | `lib/block_given/wallet.rb` | key, signing (EIP-1559/legacy/191/712), tx preparation |
 | `lib/block_given/transaction.rb`, `receipt.rb`, `event.rb`, `normalizer.rb` | value objects around RPC results |
 | `lib/block_given/abi/` | `Interface` (parse, overloads), `Function`, `Event`, `CustomError`, `Parameter`, `Coder` (coercion) |
+| `lib/block_given/abis/` | shipped standard ABIs (`Abis::ERC20`, `ERC721`, `ERC1155`, `ERC4626`), `Abis.fetch`, `Abis::Definition` builder |
 | `lib/block_given/contract.rb` | class-level DSL (`abi`, `abi_file`, `address`, `chain`) + read/write/simulate/events |
 | `lib/block_given/railtie.rb` | optional, loaded when `Rails::Railtie` is defined |
-| `spec/` | mirrors `lib/`; `spec/fixtures/erc20.json` is the only ABI in the repo |
+| `spec/` | mirrors `lib/`; `spec/fixtures/erc20.json` only exercises `abi_file` loading |
 | `gemfiles/` | Rails 7.0–8.0 compat Gemfiles (`RAILS_COMPAT=1`) |
 
 ## Rules we follow
@@ -44,7 +45,8 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
   asserting the secret is absent.
 - **`tx:` is the only reserved keyword on contract methods.** Everything else maps to ABI input names.
   Never add top-level keywords like `value:` or `from:` to dynamic methods (ERC20 has an input named `value`).
-- **No ABI in the gem.** Applications own their ABIs (`abi_file`, `BlockGiven.config.abi_path`).
+- **No application ABI in the gem.** Only frozen standards ship (`lib/block_given/abis/`: EIP-20/721/1155/4626 with
+  ERC-6093 errors). Applications own the ABIs of their own contracts (`abi_file`, `BlockGiven.config.abi_path`).
 - **Ruby 3.1 is the floor.** No syntax newer than 3.1. Known trap: anonymous block `&` combined with keyword
   arguments is a syntax error on 3.1, name the block param. Endless methods (`def x = ...`) are fine.
 - **Return Ruby values, not hex.** Client methods decode QUANTITY to Integer, normalize keys to snake_case

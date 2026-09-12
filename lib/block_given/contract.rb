@@ -5,7 +5,7 @@ module BlockGiven
   # address / chain) and every ABI function becomes a Ruby method:
   #
   #   class Usdc < BlockGiven::Contract
-  #     abi_file "abis/erc20.json"   # your app's ABI file (see BlockGiven.config.abi_path)
+  #     abi :erc20                   # shipped standard (BlockGiven::Abis), or abi_file "abis/my_contract.json"
   #     address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
   #   end
   #
@@ -23,7 +23,8 @@ module BlockGiven
     class << self
       attr_reader :interface
 
-      # Sets (or returns) the ABI. Accepts an Array, an artifact Hash, or a JSON String.
+      # Sets (or returns) the ABI. Accepts an Array, an artifact Hash, a JSON String or the Symbol
+      # name of a shipped standard (:erc20, :erc721, :erc1155, :erc4626).
       def abi(source = nil)
         return interface&.raw if source.nil?
 
