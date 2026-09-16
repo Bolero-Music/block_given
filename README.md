@@ -439,8 +439,9 @@ fixes the patch. Every change is listed in `CHANGELOG.md`. Dependency policy: Ru
 only once they reach end of life, Rails versions are tested while they receive security fixes, and the `eth`
 constraint is only tightened when a feature needs it.
 
-To release: bump `lib/block_given/version.rb`, move the `Unreleased` notes under the new version in `CHANGELOG.md`,
-commit, then push a `vX.Y.Z` tag. The release workflow checks the tag against the version, runs the suite and
+To release: on a branch off `develop`, bump `lib/block_given/version.rb`, move the `Unreleased` notes under the
+new version in `CHANGELOG.md`, merge it into `develop`, then merge the release pull request `develop` -> `main`
+and push a `vX.Y.Z` tag. The release workflow checks the tag against the version, runs the suite and
 publishes through RubyGems trusted publishing (no API key in CI). `bundle exec rake release` does the same
 from a maintainer machine with RubyGems credentials.
 
@@ -453,9 +454,10 @@ from a maintainer machine with RubyGems credentials.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on [GitHub](https://github.com/Bolero-Music/block_given). Please read
-[CONTRIBUTING.md](CONTRIBUTING.md) (setup, test matrix, conventions) and the
-[code of conduct](CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on [GitHub](https://github.com/Bolero-Music/block_given). Branch from
+`develop` and target `develop`: `main` is release-only, and both branches require a pull request with green CI and
+an approving review. Please read [CONTRIBUTING.md](CONTRIBUTING.md) (branches, setup, test matrix, conventions) and
+the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Roadmap
 
