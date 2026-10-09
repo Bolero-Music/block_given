@@ -54,6 +54,10 @@ RSpec.describe BlockGiven::Utils do
   describe ".checksum_address" do
     it "checksums and validates" do
       expect(described_class.checksum_address(TEST_ADDRESS.downcase)).to eq(TEST_ADDRESS)
+      expect(described_class.checksum_address(TEST_ADDRESS.upcase.sub("0X", "0x"))).to eq(TEST_ADDRESS)
+      GOLDEN["checksum"].each do |vector|
+        expect(described_class.checksum_address(vector["input"])).to eq(vector["checksummed"])
+      end
       expect { described_class.checksum_address("0x123") }.to raise_error(BlockGiven::InvalidAddressError)
     end
 

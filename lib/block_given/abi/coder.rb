@@ -38,7 +38,8 @@ module BlockGiven
       # @return [String] `0x`-prefixed encoded data (no selector)
       # @raise [BlockGiven::InvalidArgumentError] when the count differs or a value cannot be coerced
       # @raise [BlockGiven::InvalidAddressError] when an address value is malformed
-      # @raise [BlockGiven::AbiError] when `Eth::Abi` rejects a coerced value (out of bounds, ...)
+      # @raise [BlockGiven::AbiEncodingError] when the encoder rejects a coerced value (out of bounds, ...)
+      # @raise [BlockGiven::AbiError] when a type is not supported
       def encode(params, values)
         if params.size != values.size
           raise InvalidArgumentError,
@@ -46,9 +47,9 @@ module BlockGiven
         end
 
         coerced = params.zip(values).map { |param, value| coerce(value, param) }
-        Utils.bin_to_hex(Eth::Abi.encode(params.map(&:type), coerced))
-      rescue Eth::Abi::EncodingError, Eth::Abi::ValueOutOfBounds => e
-        raise AbiError, "ABI encoding failed: #{e.message}"
+        Utils.bin_to_hex(Codec.encode(params.map(&:type), coerced))
+      rescue AbiEncodingError => e
+        raise AbiEncodingError, "ABI encoding failed: #{e.message}"
       end
 
       # ABI-decodes data for the given parameters and formats the values (see the module documentation).
@@ -57,18 +58,19 @@ module BlockGiven
       # @param hex [String] `0x`-prefixed encoded data
       # @return [Array] one formatted Ruby value per parameter (empty when `params` is empty, whatever
       #   the data)
-      # @raise [BlockGiven::AbiError] when the data is empty (typically no contract at the address) or
-      #   `Eth::Abi` cannot decode it
+      # @raise [BlockGiven::AbiError] when the data is empty (typically no contract at the address)
+      # @raise [BlockGiven::AbiDecodingError] when the data is not hex or too short for the types
       def decode(params, hex)
         return [] if params.empty?
 
         data = Utils.strip_hex(hex.to_s)
         raise AbiError, "cannot decode empty data (does the contract exist at this address?)" if data.empty?
+        raise AbiDecodingError, "data is not hex" unless data.match?(/\A(\h\h)+\z/)
 
-        values = Eth::Abi.decode(params.map(&:type), "0x#{data}")
+        values = Codec.decode(params.map(&:type), Utils.hex_to_bin(data))
         params.zip(values).map { |param, value| format(value, param) }
-      rescue Eth::Abi::DecodingError => e
-        raise AbiError, "ABI decoding failed: #{e.message}"
+      rescue AbiDecodingError => e
+        raise AbiDecodingError, "ABI decoding failed: #{e.message}"
       end
 
       # Coerces one Ruby value into the encoder input for a parameter (recursing into arrays and tuples).
@@ -102,7 +104,7 @@ module BlockGiven
       # Formats one decoded value into idiomatic Ruby for a parameter (recursing into arrays and tuples).
       #
       # @api private
-      # @param value [Object] the value returned by `Eth::Abi.decode`
+      # @param value [Object] the value returned by {Codec.decode}
       # @param param [Parameter] the decoded parameter
       # @return [Object] checksummed address, `0x` hex bytes, UTF-8 string, Hash or Array for tuples, or
       #   the value unchanged
@@ -112,7 +114,7 @@ module BlockGiven
 
         case param.raw_type
         when "address" then Utils.checksum_address(value)
-        when /\Abytes\d*\z/ then value.is_a?(String) && !Utils.hex?(value) ? Utils.bin_to_hex(value) : value
+        when /\Abytes\d*\z/ then Utils.bin_to_hex(value)
         when "string" then value.to_s.dup.force_encoding(Encoding::UTF_8)
         else value
         end

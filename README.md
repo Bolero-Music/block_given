@@ -18,7 +18,7 @@ BlockGiven.configure do |c|
 end
 
 class Usdc < BlockGiven::Contract
-  abi_file "abis/erc20.json"   # ABIs live in your repo, not in the gem
+  abi :erc20                   # shipped standard; your own contracts use abi_file "abis/catalog.json"
   address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 end
 
@@ -26,7 +26,7 @@ wallet = BlockGiven::Wallet.new(private_key: ENV["PRIVATE_KEY"])
 usdc = Usdc.new(wallet: wallet)
 
 usdc.balance_of(wallet.address)                 # => 12_500_000  (eth_call, decoded)
-tx = usdc.transfer(to: "0x7099...79C8", amount: 1e6)  # signs + broadcasts, returns BlockGiven::Transaction
+tx = usdc.transfer(to: "0x7099...79C8", value: 1e6)  # signs + broadcasts, returns BlockGiven::Transaction
 receipt = tx.wait!                              # polls until mined, raises if reverted
 usdc.events_from(receipt)                       # => [#<BlockGiven::Event Transfer {from:, to:, value: 1000000}>]
 ```
@@ -38,6 +38,7 @@ usdc.events_from(receipt)                       # => [#<BlockGiven::Event Transf
   - [Connectors](#connectors)
   - [Chains](#chains)
 - [Contracts](#contracts)
+  - [Standard ABIs](#standard-abis)
   - [Calling functions](#calling-functions)
   - [Transactions & receipts](#transactions--receipts)
   - [Reliable writes: sign first, broadcast later](#reliable-writes-sign-first-broadcast-later)
@@ -66,9 +67,9 @@ usdc.events_from(receipt)                       # => [#<BlockGiven::Event Transf
 gem "block_given"
 ```
 
-BlockGiven depends on the [`eth`](https://github.com/q9f/eth.rb) gem for secp256k1, keccak and ABI primitives.
-Its native extension needs libsecp256k1; on macOS `brew install secp256k1` then
-`gem install rbsecp256k1 -- --with-system-library` if the bundled build fails.
+BlockGiven is pure Ruby: keccak-256, secp256k1 signing (RFC 6979), RLP, transactions, EIP-712 and the ABI codec
+are implemented in the gem on top of Ruby's OpenSSL standard library, so it installs with no native extension and
+no system package (the OpenSSL Ruby links against must support the secp256k1 curve, as stock builds do).
 
 Requires Ruby >= 3.1.
 
@@ -113,13 +114,13 @@ client = BlockGiven::Client.new(chain: fork, connector: BlockGiven::Connectors::
 
 ## Contracts
 
-The gem ships no ABI: keep them in your repository (`abis/*.json`, or the Hardhat/Foundry artifacts) and
-point each contract class at its file. With `BlockGiven.config.abi_path = Rails.root.join("abis")` relative
-names resolve from that directory.
+The ABI comes either from a standard the gem ships (`abi :erc20`, see below) or from your repository
+(`abis/*.json`, or the Hardhat/Foundry artifacts) through `abi_file`. With
+`BlockGiven.config.abi_path = Rails.root.join("abis")` relative names resolve from that directory.
 
 ```ruby
 class Usdc < BlockGiven::Contract
-  abi_file "erc20.json"                              # ABI array, Hardhat/Foundry artifact ({ "abi": [...] }), or JSON string via `abi`
+  abi :erc20                                         # or abi_file "catalog.json": ABI array, Hardhat/Foundry artifact, JSON string
   address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" # optional default address (USDC on Base)
   chain :base                                        # optional: pins the chain regardless of the global config
 end
@@ -129,6 +130,31 @@ usdc = Usdc.at("0x036CbD53842c5426634e7929541eC2318f3dCF7e", wallet: wallet)  # 
 usdc = Usdc.at("0x036CbD53842c5426634e7929541eC2318f3dCF7e")                 # read-only (no wallet)
 ```
 
+### Standard ABIs
+
+`BlockGiven::Abi::Standards` ships the token standards as frozen ABI arrays, so the usual `erc20.json` download is not
+needed and the keyword names below are guaranteed: `ERC20`, `ERC721`, `ERC1155` and `ERC4626`. Each one
+carries the EIP functions and events, the usual extensions (metadata, ERC-165 `supportsInterface`, ERC-721
+enumerable) and the [ERC-6093](https://eips.ethereum.org/EIPS/eip-6093) custom errors, so reverts from
+OpenZeppelin-based tokens decode by name. Input names follow OpenZeppelin 5 (`transfer(to, value)`).
+
+```ruby
+class Usdc < BlockGiven::Contract
+  abi :erc20                                   # Symbol name of a shipped ABI
+end
+
+class SongShares < BlockGiven::Contract
+  abi BlockGiven::Abi::Standards::ERC1155                # the constant works too
+end
+
+BlockGiven::Abi::Standards.fetch("ERC-721")            # => the ABI Array; extend it: abi BlockGiven::Abi::Standards::ERC721 + extra_definitions
+BlockGiven::Abi::Standards.names                       # => [:erc20, :erc721, :erc1155, :erc4626]
+```
+
+ERC-721 has two `safeTransferFrom` overloads: positional calls pick one by arity, otherwise use the full
+signature (`nft.write("safeTransferFrom(address,address,uint256,bytes)", ...)`). Your own contracts keep their
+ABIs in the application (`abi_file`): they change with every deployment and the gem must not pin them.
+
 ### Calling functions
 
 Every ABI function is available in snake_case. `view`/`pure` functions run `eth_call` and return decoded
@@ -137,7 +163,7 @@ values; the others sign and broadcast a transaction and return a `BlockGiven::Tr
 ```ruby
 usdc.balance_of("0x...")                      # positional
 usdc.balance_of(account: "0x...")             # keyword (ABI input names, leading _ stripped, snake_cased)
-usdc.transfer(to: "0x...", amount: 1e6)       # 1 USDC; floats are accepted when they are whole numbers
+usdc.transfer(to: "0x...", value: 1e6)       # 1 USDC; floats are accepted when they are whole numbers
 usdc.transfer(wallet2, 1_000_000)             # anything responding to #address works as an address
 usdc.approve(spender, 2**256 - 1)             # uint256 takes any Integer
 usdc.allowance(wallet.address, spender)
@@ -151,7 +177,7 @@ Transaction and call overrides live in the reserved `tx:` keyword so they never 
 (ERC20 itself has an input called `value`):
 
 ```ruby
-usdc.transfer(to: addr, amount: 1e6, tx: { gas: 80_000, nonce: 12 })
+usdc.transfer(to: addr, value: 1e6, tx: { gas: 80_000, nonce: 12 })
 usdc.balance_of(addr, tx: { block: 20_000_000 })                # historical read
 weth.deposit(tx: { value: BlockGiven::Utils.parse_ether("0.1") })  # payable: weth = Weth.at("0x4200000000000000000000000000000000000006")
 usdc.simulate(:transfer, addr, 1e6, tx: { from: treasury })     # eth_call with another msg.sender
@@ -165,14 +191,14 @@ usdc.read(:balance_of, addr)
 usdc.write("transfer(address,uint256)", addr, 1_000_000)   # full signature picks an overload
 usdc.simulate(:transfer, addr, 10**12)     # eth_call from the wallet: raises the decoded revert without paying gas
 usdc.estimate_gas(:transfer, addr, 1_000_000)
-usdc.encode_function_data(:transfer, to: addr, amount: 1)
+usdc.encode_function_data(:transfer, to: addr, value: 1)
 usdc.decode_function_result(:balance_of, "0x...")
 ```
 
 ### Transactions & receipts
 
 ```ruby
-tx = usdc.transfer(to: addr, amount: 1e6)
+tx = usdc.transfer(to: addr, value: 1e6)
 tx.hash                      # "0x..."
 tx.explorer_url              # https://basescan.org/tx/0x...
 tx.mined?                    # non-blocking
@@ -193,7 +219,7 @@ nonce, then broadcast. If the RPC call times out you still know exactly which tr
 and a same-nonce replacement can never be mined twice. Example: paying out USDC from an outbox table.
 
 ```ruby
-signed = usdc.prepare_write(:transfer, to: payout.wallet, amount: 12_500_000, tx: { nonce: payout.nonce })
+signed = usdc.prepare_write(:transfer, to: payout.wallet, value: 12_500_000, tx: { nonce: payout.nonce })
 signed.hash, signed.nonce, signed.raw                       # known now; signed.to_h for persistence
 payout.update!(tx_hash: signed.hash, raw_tx: signed.raw, status: :submitted)
 signed.broadcast                                            # eth_sendRawTransaction, returns the Transaction
@@ -220,7 +246,7 @@ the original gets mined first, the replacement is rejected for its nonce and `tx
 
 ```ruby
 begin
-  usdc.transfer(to: addr, amount: 10**12)
+  usdc.transfer(to: addr, value: 10**12)
 rescue BlockGiven::ContractRevertError => e
   e.message     # => 'ERC20InsufficientBalance("0xf39F...", 5, 1000000000000)'
   e.error_name  # => "ERC20InsufficientBalance"
@@ -361,7 +387,7 @@ Token helpers are one method away in your own contract class:
 
 ```ruby
 class Erc20 < BlockGiven::Contract
-  abi_file "erc20.json"
+  abi :erc20
   def decimals = @decimals ||= read(:decimals)
   def parse_amount(value) = BlockGiven::Utils.parse_units(value, decimals)    # "1.5" -> 1_500_000
   def format_amount(value) = BlockGiven::Utils.format_units(value, decimals)  # 1_500_000 -> "1.5"
@@ -389,7 +415,6 @@ stub.calls_for("eth_sendRawTransaction")
 | ------ | ------------------------------------------ | ------------------------------------------------------------- |
 | Ruby   | >= 3.1 (3.1, 3.2, 3.3, 3.4)                | CI matrix + local run on each version                         |
 | Rails  | optional, 7.0 / 7.1 / 7.2 / 8.0            | full suite run with Rails loaded (`gemfiles/rails_*.gemfile`) |
-| `eth`  | ~> 0.5, >= 0.5.17 (tuple ABI support)      | pinned in the gemspec                                         |
 | stdlib | `bigdecimal`, `logger` declared explicitly | bundled gems in Ruby 3.4 / 3.5                                |
 
 BlockGiven has no runtime dependency on Rails or ActiveSupport: it is plain Ruby and works in scripts,
@@ -413,7 +438,7 @@ unless the initializer sets `c.logger` itself. Contract classes live wherever yo
 ## Development
 
 ```bash
-bin/setup                            # bundle install (+ libsecp256k1 fallback)
+bin/setup                            # bundle install
 bundle exec rspec                    # unit suite (Stub connector, no network)
 COVERAGE=1 bundle exec rspec         # + SimpleCov report in coverage/ (minimum 90% lines)
 bundle exec rubocop
@@ -436,11 +461,12 @@ CI runs the suite on Ruby 3.1 to 3.4 and against Rails 7.0, 7.1, 7.2 and 8.0 (`.
 BlockGiven follows [Semantic Versioning](https://semver.org): breaking changes to the public API
 (`BlockGiven::Contract`, `Wallet`, `Client`, connectors, `Utils`) bump the major version, additions the minor,
 fixes the patch. Every change is listed in `CHANGELOG.md`. Dependency policy: Ruby versions are dropped
-only once they reach end of life, Rails versions are tested while they receive security fixes, and the `eth`
-constraint is only tightened when a feature needs it.
+only once they reach end of life, Rails versions are tested while they receive security fixes, and runtime
+dependencies stay limited to Ruby's default and bundled gems.
 
-To release: bump `lib/block_given/version.rb`, move the `Unreleased` notes under the new version in `CHANGELOG.md`,
-commit, then push a `vX.Y.Z` tag. The release workflow checks the tag against the version, runs the suite and
+To release: on a branch off `develop`, bump `lib/block_given/version.rb`, move the `Unreleased` notes under the
+new version in `CHANGELOG.md`, merge it into `develop`, then merge the release pull request `develop` -> `main`
+and push a `vX.Y.Z` tag. The release workflow checks the tag against the version, runs the suite and
 publishes through RubyGems trusted publishing (no API key in CI). `bundle exec rake release` does the same
 from a maintainer machine with RubyGems credentials.
 
@@ -453,9 +479,10 @@ from a maintainer machine with RubyGems credentials.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on [GitHub](https://github.com/Bolero-Music/block_given). Please read
-[CONTRIBUTING.md](CONTRIBUTING.md) (setup, test matrix, conventions) and the
-[code of conduct](CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on [GitHub](https://github.com/Bolero-Music/block_given). Branch from
+`develop` and target `develop`: `main` is release-only, and both branches require a pull request with green CI and
+an approving review. Please read [CONTRIBUTING.md](CONTRIBUTING.md) (branches, setup, test matrix, conventions) and
+the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Roadmap
 

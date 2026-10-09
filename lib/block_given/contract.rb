@@ -30,7 +30,7 @@ module BlockGiven
   #
   # @example Declaring and using a contract
   #   class Usdc < BlockGiven::Contract
-  #     abi_file "abis/erc20.json"   # your app's ABI file (see BlockGiven.config.abi_path)
+  #     abi :erc20                   # shipped standard (Abi::Standards), or abi_file "abis/my_contract.json"
   #     address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
   #   end
   #
@@ -57,9 +57,10 @@ module BlockGiven
 
       # Declares the ABI (and defines the dynamic methods), or returns the raw ABI definitions.
       #
-      # @param source [Array<Hash>, Hash, String, Pathname, Abi::Interface, nil] an ABI Array, a
-      #   Hardhat/Foundry artifact Hash with an `"abi"` key, a JSON String, a Pathname to a JSON file or an
-      #   already parsed {Abi::Interface}; `nil` to read the current ABI
+      # @param source [Array<Hash>, Hash, String, Symbol, Pathname, Abi::Interface, nil] an ABI Array, a
+      #   Hardhat/Foundry artifact Hash with an `"abi"` key, a JSON String, the Symbol name of a shipped standard
+      #   (`:erc20`, `:erc721`, `:erc1155`, `:erc4626`), a Pathname to a JSON file or an already parsed
+      #   {Abi::Interface}; `nil` to read the current ABI
       # @return [Abi::Interface] the parsed interface when `source` is given
       # @return [Array<Hash>, nil] the raw ABI definitions when called without argument (`nil` if none)
       # @raise [BlockGiven::AbiError] when the source cannot be parsed as an ABI
@@ -68,6 +69,10 @@ module BlockGiven
       #     abi JSON.parse(File.read("abis/erc20.json"))
       #   end
       #   Erc20.abi # => [{"type"=>"function", "name"=>"balanceOf", ...}, ...]
+      # @example A shipped standard
+      #   class Usdc < BlockGiven::Contract
+      #     abi :erc20
+      #   end
       def abi(source = nil)
         return interface&.raw if source.nil?
 

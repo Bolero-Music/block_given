@@ -23,8 +23,8 @@ Gemfiles are in `gemfiles/rails_<version>.gemfile` and use `gemspec path: "../"`
 
 ## Known pitfalls
 
-- `rbsecp256k1` native build: use the system lib (`BUNDLE_BUILD__RBSECP256K1=--with-system-library`,
-  `brew install secp256k1` / `apt-get install libsecp256k1-dev`). `bin/setup` does this automatically.
+- No native extension to build (the `eth` / `rbsecp256k1` dependency is gone): a bare `ruby:X.Y` image needs no
+  apt package. secp256k1 comes from the OpenSSL Ruby links against.
 - Ruby 3.1 parser: anonymous block `&` with keyword args is a syntax error. Rubocop's `Naming/BlockForwarding`
   is disabled for that reason.
 - Rails 7.1+ wraps `config.logger` in `ActiveSupport::BroadcastLogger`: compare with `Rails.logger`, not the

@@ -81,7 +81,7 @@ RSpec.describe BlockGiven::Contract do
       data = error.selector + BlockGiven::Utils.strip_hex(abi_encode(%w[address uint256 uint256], [TEST_ADDRESS, 5, 10]))
       stub.stub("eth_call", BlockGiven::RpcError.from_payload({ "code" => 3, "message" => "execution reverted", "data" => data }))
 
-      expect { usdc.simulate(:transfer, to: OTHER_ADDRESS, amount: 10) }.to raise_error(BlockGiven::ContractRevertError) do |e|
+      expect { usdc.simulate(:transfer, to: OTHER_ADDRESS, value: 10) }.to raise_error(BlockGiven::ContractRevertError) do |e|
         expect(e.error_name).to eq("ERC20InsufficientBalance")
         expect(e.args).to eq(sender: TEST_ADDRESS, balance: 5, needed: 10)
         expect(e.message).to eq("ERC20InsufficientBalance(\"#{TEST_ADDRESS}\", 5, 10)")
@@ -96,13 +96,13 @@ RSpec.describe BlockGiven::Contract do
                                "data" => word(1_000_000), "blockNumber" => "0x11", "logIndex" => "0x0" }] }
       stub.stub("eth_getTransactionReceipt", BlockGiven::Connectors::Stub.sequence(nil, receipt))
 
-      tx = usdc.transfer(to: OTHER_ADDRESS, amount: 1e6)
+      tx = usdc.transfer(to: OTHER_ADDRESS, value: 1e6)
       expect(tx).to be_a(BlockGiven::Transaction)
 
-      sent = Eth::Tx.decode(stub.calls_for("eth_sendRawTransaction").last.first)
-      expect(sent.destination.downcase).to eq(BlockGiven::Utils.strip_hex(USDC_BASE).downcase)
-      expect("0x#{sent.payload.unpack1('H*')}").to eq(usdc.encode_function_data(:transfer, OTHER_ADDRESS, 1_000_000))
-      expect(sent.gas_limit).to eq(60_000)
+      sent = BlockGiven::TransactionEnvelope.decode(stub.calls_for("eth_sendRawTransaction").last.first)
+      expect(sent[:to]).to eq(USDC_BASE)
+      expect(sent[:data]).to eq(usdc.encode_function_data(:transfer, OTHER_ADDRESS, 1_000_000))
+      expect(sent[:gas]).to eq(60_000)
 
       result = tx.wait!
       expect(result.success?).to be true
@@ -113,10 +113,8 @@ RSpec.describe BlockGiven::Contract do
 
     it "passes tx overrides to the wallet" do
       usdc.approve(OTHER_ADDRESS, 1, tx: { gas: 80_000, nonce: 12, max_fee_per_gas: 100, max_priority_fee_per_gas: 1 })
-      sent = Eth::Tx.decode(stub.calls_for("eth_sendRawTransaction").last.first)
-      expect(sent.gas_limit).to eq(80_000)
-      expect(sent.signer_nonce).to eq(12)
-      expect(sent.max_fee_per_gas).to eq(100)
+      sent = BlockGiven::TransactionEnvelope.decode(stub.calls_for("eth_sendRawTransaction").last.first)
+      expect(sent).to include(gas: 80_000, nonce: 12, max_fee_per_gas: 100)
     end
 
     it "requires a wallet" do
@@ -126,7 +124,7 @@ RSpec.describe BlockGiven::Contract do
 
     it "prepares a signed transaction whose hash is known before broadcasting" do
       stub.stub("eth_sendRawTransaction", ->(params) { BlockGiven::Utils.keccak256(params.first) })
-      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, amount: 1e6, tx: { nonce: 42 })
+      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, value: 1e6, tx: { nonce: 42 })
 
       expect(signed).to be_a(BlockGiven::SignedTransaction)
       expect(signed.nonce).to eq(42)
@@ -143,7 +141,7 @@ RSpec.describe BlockGiven::Contract do
     it "decodes custom errors raised while broadcasting a prepared transaction" do
       selector = BlockGiven::Utils.keccak256("ERC20InsufficientBalance(address,uint256,uint256)")[0, 10]
       revert_data = selector + BlockGiven::Utils.strip_hex(abi_encode(%w[address uint256 uint256], [TEST_ADDRESS, 5, 1_000_000]))
-      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, amount: 1e6, tx: { gas: 60_000 })
+      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, value: 1e6, tx: { gas: 60_000 })
       stub.stub("eth_sendRawTransaction",
                 BlockGiven::RpcError.from_payload({ "code" => 3, "message" => "execution reverted", "data" => revert_data }, rpc_method: "eth_sendRawTransaction"))
 
@@ -160,7 +158,7 @@ RSpec.describe BlockGiven::Contract do
     end
 
     it "estimates gas for a call" do
-      expect(usdc.estimate_gas(:transfer, to: OTHER_ADDRESS, amount: 1)).to eq(50_000)
+      expect(usdc.estimate_gas(:transfer, to: OTHER_ADDRESS, value: 1)).to eq(50_000)
     end
   end
 

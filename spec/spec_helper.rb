@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
+require "json"
 
 if ENV["COVERAGE"]
   require "simplecov"
@@ -20,10 +21,13 @@ TEST_ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 OTHER_ADDRESS = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 FIXTURES = File.expand_path("fixtures", __dir__)
+# Vectors produced by the eth gem 0.5.17 (libsecp256k1) before block_given dropped it; the in-house
+# implementation must reproduce every one of them byte for byte.
+GOLDEN = JSON.parse(File.read(File.join(FIXTURES, "eth_golden_vectors.json"))).freeze
 
-# A contract class the way an application would declare it (ABI file lives in the app repo).
+# A contract class the way an application would declare it, on a shipped standard ABI.
 class TestERC20 < BlockGiven::Contract
-  abi_file File.join(FIXTURES, "erc20.json")
+  abi :erc20
 
   def decimals = @decimals ||= read(:decimals)
   def parse_amount(value) = BlockGiven::Utils.parse_units(value, decimals)
@@ -40,7 +44,7 @@ module SpecHelpers
   end
 
   def abi_encode(types, values)
-    BlockGiven::Utils.bin_to_hex(Eth::Abi.encode(types, values))
+    BlockGiven::Utils.bin_to_hex(BlockGiven::Abi::Codec.encode(types, values))
   end
 
   def build_stub(extra = {})

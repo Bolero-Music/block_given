@@ -7,7 +7,7 @@ Public API and behaviour are documented in `README.md`; this file is about how w
 ## Commands
 
 ```bash
-bin/setup                       # bundle install (+ libsecp256k1 fallback)
+bin/setup                       # bundle install
 bundle exec rspec               # unit suite, no network (Stub connector + WebMock)
 bundle exec rubocop             # must be clean; rubocop -a fixes most style issues
 bundle exec rake ci             # rspec + rubocop + doc_check + gem build — run before every commit
@@ -30,10 +30,12 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
 | `lib/block_given/poller.rb` | `Poller.poll` (blocking) and `Watcher` (thread + registry by id) |
 | `lib/block_given/wallet.rb` | key, signing (EIP-1559/legacy/191/712), tx preparation |
 | `lib/block_given/transaction.rb`, `receipt.rb`, `event.rb`, `normalizer.rb` | value objects around RPC results |
-| `lib/block_given/abi/` | `Interface` (parse, overloads), `Function`, `Event`, `CustomError`, `Parameter`, `Coder` (coercion) |
+| `lib/block_given/abi/` | `Interface` (parse, overloads), `Function`, `Event`, `CustomError`, `Parameter`, `Coder` (coercion), `Codec` + `Type` (ABI encoding) |
+| `lib/block_given/abi/standards/` | shipped standard ABIs (`Abi::Standards::ERC20`, `ERC721`, `ERC1155`, `ERC4626`), `Abi::Standards.fetch`, `Abi::Standards::Definition` builder |
+| `lib/block_given/crypto/`, `rlp.rb`, `transaction_envelope.rb`, `eip712.rb` | in-house keccak-256, secp256k1 (OpenSSL), RLP, tx signing/decoding, EIP-712 (no `eth` gem, no native extension) |
 | `lib/block_given/contract.rb` | class-level DSL (`abi`, `abi_file`, `address`, `chain`) + read/write/simulate/events |
 | `lib/block_given/railtie.rb` | optional, loaded when `Rails::Railtie` is defined |
-| `spec/` | mirrors `lib/`; `spec/fixtures/erc20.json` is the only ABI in the repo |
+| `spec/` | mirrors `lib/`; `spec/fixtures/erc20.json` only exercises `abi_file` loading |
 | `gemfiles/` | Rails 7.0–8.0 compat Gemfiles (`RAILS_COMPAT=1`) |
 
 ## Rules we follow
@@ -46,13 +48,17 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
   asserting the secret is absent.
 - **`tx:` is the only reserved keyword on contract methods.** Everything else maps to ABI input names.
   Never add top-level keywords like `value:` or `from:` to dynamic methods (ERC20 has an input named `value`).
-- **No ABI in the gem.** Applications own their ABIs (`abi_file`, `BlockGiven.config.abi_path`).
+- **No application ABI in the gem.** Only frozen standards ship (`lib/block_given/abi/standards/`: EIP-20/721/1155/4626 with
+  ERC-6093 errors). Applications own the ABIs of their own contracts (`abi_file`, `BlockGiven.config.abi_path`).
+- **No native extensions.** Runtime dependencies are Ruby default/bundled gems only; crypto goes through the
+  OpenSSL stdlib. `spec/fixtures/eth_golden_vectors.json` (generated with eth 0.5.17) pins keys, signatures,
+  transactions and ABI encodings byte for byte: any change to the crypto or codec code must keep it green.
 - **Ruby 3.1 is the floor.** No syntax newer than 3.1. Known trap: anonymous block `&` combined with keyword
   arguments is a syntax error on 3.1, name the block param. Endless methods (`def x = ...`) are fine.
 - **Return Ruby values, not hex.** Client methods decode QUANTITY to Integer, normalize keys to snake_case
   symbols (`Normalizer`), checksum addresses, hex-encode bytes.
-- **Errors are typed.** Raise `BlockGiven::*` errors (`errors.rb`); wrap third-party exceptions (`Eth::Abi::*`,
-  `Net::*`) at the boundary. Revert data becomes `ContractRevertError` and is enriched with the contract ABI.
+- **Errors are typed.** Raise `BlockGiven::*` errors (`errors.rb`); wrap third-party exceptions (`Net::*`,
+  `OpenSSL::*`) at the boundary. Revert data becomes `ContractRevertError` and is enriched with the contract ABI.
 - **Watchers must be stoppable and resumable.** Any new `watch_*` goes through `Client#watcher` (registry, id,
   named thread), keeps only a cursor across ticks, and never advances the cursor before the block ran.
 - **Every user-visible change**: CHANGELOG line under `Unreleased`, README update when the API changes, specs.
@@ -60,7 +66,9 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
   `@return`, `@yield*`, `@raise`, `@example` on entry points). `rake doc_check` fails under 100%; internal-but-public
   methods carry `@api private`.
 - **Semver.** Breaking changes to `Contract`, `Wallet`, `Client`, connectors, `Utils` bump the major.
-- Commits: imperative summary under 72 chars, blank line, the why. Branch from `main`.
+- Commits: imperative summary under 72 chars, blank line, the why. Branch from `develop` and open the PR
+  against `develop`; `main` only receives `develop` through a release PR (rulesets on both branches: no direct
+  push, all CI checks green, 1 approval, admins can bypass).
 
 ## Skills
 

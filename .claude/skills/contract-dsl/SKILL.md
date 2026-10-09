@@ -17,6 +17,9 @@ description: Change how BlockGiven::Contract or the ABI layer behaves (argument 
   inputs are positional only.
 - Overloads: resolved by arity (positional), by keyword set (kwargs), or by full signature
   `"safeMint(address,bytes)"`. Ambiguity raises `AmbiguousFunctionError` listing the signatures.
+- Shipped standards live in `lib/block_given/abi/standards/`, built with `Abi::Standards::Definition` ("type name [indexed]" strings).
+  `Interface.parse` resolves a Symbol through `Abi::Standards.fetch`. Keep them to the EIP, the OpenZeppelin extensions and
+  the ERC-6093 errors; application ABIs never go there.
 
 ## Coercion (`Abi::Coder`)
 
@@ -26,7 +29,7 @@ names, any case) or Array; bytes accept hex or binary. Outputs: addresses checks
 named tuples as Hash with snake_case symbol keys, single output unwrapped, several as Array.
 
 When adding a type rule, add cases to `spec/block_given/abi/interface_spec.rb` (encode + decode round trip through
-`Eth::Abi` in `abi_encode`).
+`Abi::Codec` in `abi_encode`).
 
 ## Events
 
@@ -41,5 +44,5 @@ with `Error(string)` / `Panic` decoding. Contract methods wrap RPC calls in `wit
 
 ## Testing
 
-Use `TestERC20` from `spec_helper.rb` (fixture ABI). For new ABI shapes, add an inline ABI Array in the spec
+Use `TestERC20` from `spec_helper.rb` (`abi :erc20`, the shipped ABI). For new ABI shapes, add an inline ABI Array in the spec
 rather than a new fixture file.
