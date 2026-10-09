@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-09
+
 ### Added
 
 - `BlockGiven::Abi::Standards`: the ERC20, ERC721, ERC1155 and ERC4626 interfaces ship as frozen ABI arrays (EIP
@@ -62,5 +64,6 @@ Initial release.
 - Optional Rails railtie (Rails 7.0 to 8.0) routing logs to `Rails.logger`.
 - Supported Ruby 3.1 to 3.4.
 
-[Unreleased]: https://github.com/Bolero-Music/block_given/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Bolero-Music/block_given/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Bolero-Music/block_given/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Bolero-Music/block_given/releases/tag/v0.1.0
