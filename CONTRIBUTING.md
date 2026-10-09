@@ -6,14 +6,13 @@ Thanks for helping. This document covers setup, how we test, and the conventions
 
 ```bash
 git clone git@github.com:Bolero-Music/block_given.git && cd block_given
-bin/setup            # bundle install, with the libsecp256k1 hint if the native build fails
+bin/setup            # bundle install
 bundle exec rspec
 bundle exec rubocop
 ```
 
-The `eth` dependency compiles `rbsecp256k1`. If the bundled libsecp256k1 download fails:
-`brew install secp256k1` (macOS) or `apt-get install libsecp256k1-dev` (Debian/Ubuntu), then
-`bundle config build.rbsecp256k1 --with-system-library` and `bundle install` again.
+The gem has no native extension: cryptography goes through Ruby's OpenSSL standard library, so no system package
+is needed.
 
 ## Branches
 

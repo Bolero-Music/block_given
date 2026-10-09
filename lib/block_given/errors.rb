@@ -24,6 +24,14 @@ module BlockGiven
   # Base class for ABI problems: missing or unreadable ABI file, unknown function or event.
   class AbiError < Error; end
 
+  # Raised when a value cannot be ABI-encoded for its type: out-of-bounds integer, `bytesN` value longer than
+  # N bytes, wrong array length, malformed address.
+  class AbiEncodingError < AbiError; end
+
+  # Raised when data cannot be ABI-decoded for the expected types: too short, or an offset or length pointing
+  # outside of it.
+  class AbiDecodingError < AbiError; end
+
   # Raised when an ABI has no function matching the requested name, signature or argument list.
   class FunctionNotFoundError < AbiError; end
 
@@ -242,9 +250,9 @@ module BlockGiven
       payload = "0x#{revert_data[10..]}"
       case selector
       when ERROR_STRING_SELECTOR
-        Eth::Abi.decode(["string"], payload).first
+        Abi::Codec.decode(["string"], Utils.hex_to_bin(payload)).first
       when PANIC_SELECTOR
-        panic_code = Eth::Abi.decode(["uint256"], payload).first
+        panic_code = Abi::Codec.decode(["uint256"], Utils.hex_to_bin(payload)).first
         "Panic(0x#{panic_code.to_s(16).rjust(2, '0')}): #{PANIC_REASONS.fetch(panic_code, 'unknown panic')}"
       end
     rescue StandardError

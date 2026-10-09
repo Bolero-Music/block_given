@@ -29,7 +29,7 @@ names, any case) or Array; bytes accept hex or binary. Outputs: addresses checks
 named tuples as Hash with snake_case symbol keys, single output unwrapped, several as Array.
 
 When adding a type rule, add cases to `spec/block_given/abi/interface_spec.rb` (encode + decode round trip through
-`Eth::Abi` in `abi_encode`).
+`Abi::Codec` in `abi_encode`).
 
 ## Events
 

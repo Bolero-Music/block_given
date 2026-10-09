@@ -99,10 +99,10 @@ RSpec.describe BlockGiven::Contract do
       tx = usdc.transfer(to: OTHER_ADDRESS, value: 1e6)
       expect(tx).to be_a(BlockGiven::Transaction)
 
-      sent = Eth::Tx.decode(stub.calls_for("eth_sendRawTransaction").last.first)
-      expect(sent.destination.downcase).to eq(BlockGiven::Utils.strip_hex(USDC_BASE).downcase)
-      expect("0x#{sent.payload.unpack1('H*')}").to eq(usdc.encode_function_data(:transfer, OTHER_ADDRESS, 1_000_000))
-      expect(sent.gas_limit).to eq(60_000)
+      sent = BlockGiven::TransactionEnvelope.decode(stub.calls_for("eth_sendRawTransaction").last.first)
+      expect(sent[:to]).to eq(USDC_BASE)
+      expect(sent[:data]).to eq(usdc.encode_function_data(:transfer, OTHER_ADDRESS, 1_000_000))
+      expect(sent[:gas]).to eq(60_000)
 
       result = tx.wait!
       expect(result.success?).to be true
@@ -113,10 +113,8 @@ RSpec.describe BlockGiven::Contract do
 
     it "passes tx overrides to the wallet" do
       usdc.approve(OTHER_ADDRESS, 1, tx: { gas: 80_000, nonce: 12, max_fee_per_gas: 100, max_priority_fee_per_gas: 1 })
-      sent = Eth::Tx.decode(stub.calls_for("eth_sendRawTransaction").last.first)
-      expect(sent.gas_limit).to eq(80_000)
-      expect(sent.signer_nonce).to eq(12)
-      expect(sent.max_fee_per_gas).to eq(100)
+      sent = BlockGiven::TransactionEnvelope.decode(stub.calls_for("eth_sendRawTransaction").last.first)
+      expect(sent).to include(gas: 80_000, nonce: 12, max_fee_per_gas: 100)
     end
 
     it "requires a wallet" do
