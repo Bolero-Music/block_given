@@ -81,7 +81,7 @@ RSpec.describe BlockGiven::Contract do
       data = error.selector + BlockGiven::Utils.strip_hex(abi_encode(%w[address uint256 uint256], [TEST_ADDRESS, 5, 10]))
       stub.stub("eth_call", BlockGiven::RpcError.from_payload({ "code" => 3, "message" => "execution reverted", "data" => data }))
 
-      expect { usdc.simulate(:transfer, to: OTHER_ADDRESS, amount: 10) }.to raise_error(BlockGiven::ContractRevertError) do |e|
+      expect { usdc.simulate(:transfer, to: OTHER_ADDRESS, value: 10) }.to raise_error(BlockGiven::ContractRevertError) do |e|
         expect(e.error_name).to eq("ERC20InsufficientBalance")
         expect(e.args).to eq(sender: TEST_ADDRESS, balance: 5, needed: 10)
         expect(e.message).to eq("ERC20InsufficientBalance(\"#{TEST_ADDRESS}\", 5, 10)")
@@ -96,7 +96,7 @@ RSpec.describe BlockGiven::Contract do
                                "data" => word(1_000_000), "blockNumber" => "0x11", "logIndex" => "0x0" }] }
       stub.stub("eth_getTransactionReceipt", BlockGiven::Connectors::Stub.sequence(nil, receipt))
 
-      tx = usdc.transfer(to: OTHER_ADDRESS, amount: 1e6)
+      tx = usdc.transfer(to: OTHER_ADDRESS, value: 1e6)
       expect(tx).to be_a(BlockGiven::Transaction)
 
       sent = Eth::Tx.decode(stub.calls_for("eth_sendRawTransaction").last.first)
@@ -126,7 +126,7 @@ RSpec.describe BlockGiven::Contract do
 
     it "prepares a signed transaction whose hash is known before broadcasting" do
       stub.stub("eth_sendRawTransaction", ->(params) { BlockGiven::Utils.keccak256(params.first) })
-      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, amount: 1e6, tx: { nonce: 42 })
+      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, value: 1e6, tx: { nonce: 42 })
 
       expect(signed).to be_a(BlockGiven::SignedTransaction)
       expect(signed.nonce).to eq(42)
@@ -143,7 +143,7 @@ RSpec.describe BlockGiven::Contract do
     it "decodes custom errors raised while broadcasting a prepared transaction" do
       selector = BlockGiven::Utils.keccak256("ERC20InsufficientBalance(address,uint256,uint256)")[0, 10]
       revert_data = selector + BlockGiven::Utils.strip_hex(abi_encode(%w[address uint256 uint256], [TEST_ADDRESS, 5, 1_000_000]))
-      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, amount: 1e6, tx: { gas: 60_000 })
+      signed = usdc.prepare_write(:transfer, to: OTHER_ADDRESS, value: 1e6, tx: { gas: 60_000 })
       stub.stub("eth_sendRawTransaction",
                 BlockGiven::RpcError.from_payload({ "code" => 3, "message" => "execution reverted", "data" => revert_data }, rpc_method: "eth_sendRawTransaction"))
 
@@ -160,7 +160,7 @@ RSpec.describe BlockGiven::Contract do
     end
 
     it "estimates gas for a call" do
-      expect(usdc.estimate_gas(:transfer, to: OTHER_ADDRESS, amount: 1)).to eq(50_000)
+      expect(usdc.estimate_gas(:transfer, to: OTHER_ADDRESS, value: 1)).to eq(50_000)
     end
   end
 

@@ -21,9 +21,9 @@ OTHER_ADDRESS = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 FIXTURES = File.expand_path("fixtures", __dir__)
 
-# A contract class the way an application would declare it (ABI file lives in the app repo).
+# A contract class the way an application would declare it, on a shipped standard ABI.
 class TestERC20 < BlockGiven::Contract
-  abi_file File.join(FIXTURES, "erc20.json")
+  abi :erc20
 
   def decimals = @decimals ||= read(:decimals)
   def parse_amount(value) = BlockGiven::Utils.parse_units(value, decimals)
