@@ -21,7 +21,8 @@ module BlockGiven
     # @param client [Client, nil] client used for RPC calls; when nil, {BlockGiven.client} is used
     # @return [Wallet] a new wallet holding the generated key
     def self.generate(client: nil)
-      new(private_key: Eth::Key.new.private_hex, client: client)
+      new(private_key: Crypto::Secp256k1.int_to_bytes(Crypto::Secp256k1.generate_private_key).unpack1("H*"),
+          client: client)
     end
 
     # Builds a wallet from an existing private key.
@@ -30,7 +31,8 @@ module BlockGiven
     #   (surrounding whitespace is ignored)
     # @param client [Client, nil] client used for nonce, gas and fee lookups and for broadcasting; when nil,
     #   every call falls back to {BlockGiven.client}
-    # @raise [BlockGiven::InvalidArgumentError] when the key is not exactly 32 bytes of hex
+    # @raise [BlockGiven::InvalidArgumentError] when the key is not exactly 32 bytes of hex, or is not a valid
+    #   secp256k1 key (zero, or not below the curve order)
     # @example
     #   wallet = BlockGiven::Wallet.new(private_key: "0x4c0883a6...d1e6") # 64 hex chars
     #   wallet.address # => "0x..."
@@ -38,20 +40,25 @@ module BlockGiven
       hex = Utils.strip_hex(private_key.to_s.strip)
       raise InvalidArgumentError, "private key must be 32 bytes hex" unless hex.match?(/\A[0-9a-fA-F]{64}\z/)
 
-      @key = Eth::Key.new(priv: hex)
-      @address = @key.address.checksummed
+      @private_key = hex.to_i(16)
+      unless Crypto::Secp256k1.valid_private_key?(@private_key)
+        raise InvalidArgumentError, "private key is out of the secp256k1 range"
+      end
+
+      @public_key = Crypto::Secp256k1.public_key(@private_key)
+      @address = Crypto.address(@public_key)
       @client = client
     end
 
     # The private key, for persistence or export. It is never included in {#inspect} or {#to_s}.
     #
     # @return [String] the 32-byte private key as `0x`-prefixed hex
-    def private_key = Utils.prefix_hex(@key.private_hex)
+    def private_key = Utils.bin_to_hex(Crypto::Secp256k1.int_to_bytes(@private_key))
 
     # The uncompressed public key matching {#private_key}.
     #
     # @return [String] the 65-byte public key as `0x`-prefixed hex
-    def public_key = Utils.prefix_hex(@key.public_hex)
+    def public_key = Utils.bin_to_hex(@public_key)
 
     # The client used for every RPC call made by this wallet.
     #
@@ -94,7 +101,7 @@ module BlockGiven
     #   signature = wallet.sign_message("Login to Bolero at 2024-01-01")
     #   signature # => "0x..." (132 hex characters)
     def sign_message(message)
-      Utils.prefix_hex(@key.personal_sign(message))
+      Utils.prefix_hex(Eth::Key.new(priv: private_key).personal_sign(message))
     end
 
     # Signs EIP-712 typed structured data.
@@ -110,7 +117,7 @@ module BlockGiven
     #     message: { owner: wallet.address, spender: "0x...", value: 1_000_000, nonce: 0, deadline: 1_700_000_000 }
     #   )
     def sign_typed_data(typed_data)
-      Utils.prefix_hex(@key.sign_typed_data(typed_data))
+      Utils.prefix_hex(Eth::Key.new(priv: private_key).sign_typed_data(typed_data))
     end
 
     # Resolves the missing fields, signs, and returns the transaction without broadcasting it.
@@ -146,9 +153,7 @@ module BlockGiven
     #   signed.replacement.broadcast if tx.pending?   # same nonce, fees bumped by 12.5%
     def signed_transaction(**params)
       prepared = prepare_transaction(**params)
-      tx = Eth::Tx.new(to_eth_tx_params(prepared))
-      tx.sign(@key)
-      SignedTransaction.new(raw: Utils.prefix_hex(tx.hex), params: prepared, wallet: self)
+      SignedTransaction.new(raw: TransactionEnvelope.sign(prepared, @private_key), params: prepared, wallet: self)
     end
 
     # Signs a transaction and returns only the raw signed bytes, without broadcasting.
@@ -297,19 +302,6 @@ module BlockGiven
         value.to_i
       when String then Utils.hex?(value) ? Utils.hex_to_int(value) : Integer(value, 10)
       else raise InvalidArgumentError, "invalid value: #{value.inspect}"
-      end
-    end
-
-    def to_eth_tx_params(params)
-      base = {
-        chain_id: params[:chain_id], nonce: params[:nonce], gas_limit: params[:gas],
-        to: params[:to], value: params[:value], data: params[:data]
-      }
-      if params[:gas_price]
-        base.merge(gas_price: params[:gas_price])
-      else
-        base[:access_list] = params[:access_list] || []
-        base.merge(priority_fee: params[:max_priority_fee_per_gas], max_gas_fee: params[:max_fee_per_gas])
       end
     end
   end

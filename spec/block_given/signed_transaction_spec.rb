@@ -8,7 +8,6 @@ RSpec.describe BlockGiven::SignedTransaction do
   before { configure_block_given(stub) }
 
   it "knows its hash and nonce before any broadcast" do
-    expect(signed.hash).to eq("0x#{Eth::Tx.decode(signed.raw).hash}")
     expect(signed.hash).to eq(BlockGiven::Utils.keccak256(signed.raw))
     expect(signed.nonce).to eq(5)
     expect(signed.from).to eq(TEST_ADDRESS)
@@ -42,7 +41,7 @@ RSpec.describe BlockGiven::SignedTransaction do
   describe "#replacement" do
     it "keeps payload and nonce, bumps both EIP-1559 fees by the multiplier" do
       replacement = signed.replacement
-      decoded = Eth::Tx.decode(replacement.raw)
+      decoded = BlockGiven::TransactionEnvelope.decode(replacement.raw)
 
       expect(replacement.hash).not_to eq(signed.hash)
       expect(replacement.nonce).to eq(signed.nonce)
@@ -51,9 +50,7 @@ RSpec.describe BlockGiven::SignedTransaction do
       expect(replacement.gas).to eq(signed.gas)
       expect(replacement.max_fee_per_gas).to eq((signed.max_fee_per_gas * 1.125).ceil)
       expect(replacement.max_priority_fee_per_gas).to eq((signed.max_priority_fee_per_gas * 1.125).ceil)
-      expect(decoded.signer_nonce).to eq(5)
-      expect(decoded.sender.downcase).to eq(BlockGiven::Utils.strip_hex(TEST_ADDRESS).downcase)
-      expect(decoded.max_fee_per_gas).to eq(replacement.max_fee_per_gas)
+      expect(decoded).to include(nonce: 5, from: TEST_ADDRESS, max_fee_per_gas: replacement.max_fee_per_gas)
     end
 
     it "never goes below a fresh fee estimate from the node" do
@@ -71,7 +68,8 @@ RSpec.describe BlockGiven::SignedTransaction do
 
       expect(legacy).to be_legacy
       expect(replacement.gas_price).to eq(1_500_000_000)
-      expect(Eth::Tx.decode(replacement.raw)).to be_a(Eth::Tx::Legacy)
+      expect(replacement.raw).not_to start_with("0x02")
+      expect(BlockGiven::TransactionEnvelope.decode(replacement.raw)).to include(gas_price: 1_500_000_000, chain_id: 8453)
     end
 
     it "refuses multipliers the node would reject" do
@@ -88,6 +86,16 @@ RSpec.describe BlockGiven::SignedTransaction do
       expect(rebuilt.hash).to eq(signed.hash)
       expect(rebuilt.params).to eq(signed.params)
       expect(rebuilt.replacement.nonce).to eq(5)
+    end
+
+    it "keeps the access list through a rebuild and a replacement" do
+      access_list = [{ address: USDC_BASE, storage_keys: ["0x#{'00' * 31}07"] }]
+      with_list = wallet.signed_transaction(to: OTHER_ADDRESS, gas: 30_000, access_list: access_list)
+      rebuilt = described_class.from_raw(with_list.raw, wallet: wallet)
+
+      expect(rebuilt.params[:access_list]).to eq(access_list)
+      expect(rebuilt.raw).to eq(with_list.raw)
+      expect(BlockGiven::TransactionEnvelope.decode(rebuilt.replacement.raw)[:access_list]).to eq(access_list)
     end
 
     it "rebuilds a legacy transaction with calldata" do

@@ -34,9 +34,9 @@ module BlockGiven
     # Rebuilds a signed transaction from persisted raw bytes, typically after a process restart, so it can be
     # broadcast again ({#broadcast}) or replaced ({#replacement}).
     #
-    # The bytes are decoded with `Eth::Tx.decode`; both EIP-1559 (type 2) and legacy (type 0) transactions are
-    # supported and the recovered sender must be `wallet`'s address, since only that wallet can sign a
-    # replacement.
+    # Both EIP-1559 (type 2) and legacy (type 0) transactions are supported and the recovered sender must be
+    # `wallet`'s address, since only that wallet can sign a replacement. A non-empty access list comes back as
+    # `[{ address:, storage_keys: }]`.
     #
     # @param raw [String] the signed transaction bytes as hex (with or without `0x`), as returned by {#raw}
     # @param wallet [Wallet] the wallet that signed the bytes; used by {#replacement} to re-sign
@@ -50,37 +50,17 @@ module BlockGiven
     #   signed.hash == payout.tx_hash # => true
     #   signed.transaction.status     # => :pending
     def self.from_raw(raw, wallet:, interface: nil)
-      decoded = begin
-        Eth::Tx.decode(Utils.prefix_hex(raw))
-      rescue StandardError => e
+      params = begin
+        TransactionEnvelope.decode(raw)
+      rescue InvalidArgumentError => e
         raise InvalidArgumentError, "cannot decode signed transaction: #{e.message}"
       end
-      sender = Utils.checksum_address(Utils.prefix_hex(decoded.sender)) # eth returns unprefixed hex
-      unless Utils.same_address?(sender, wallet.address)
-        raise InvalidArgumentError, "signed transaction was sent by #{sender}, not by wallet #{wallet.address}"
+      unless Utils.same_address?(params[:from], wallet.address)
+        raise InvalidArgumentError, "signed transaction was sent by #{params[:from]}, not by wallet #{wallet.address}"
       end
 
-      new(raw: raw, params: params_from(decoded, sender), wallet: wallet, interface: interface)
+      new(raw: raw, params: params, wallet: wallet, interface: interface)
     end
-
-    def self.params_from(decoded, sender)
-      destination = decoded.destination.to_s
-      params = {
-        from: sender, to: destination.empty? ? nil : Utils.checksum_address(Utils.prefix_hex(destination)),
-        value: decoded.amount, data: decoded.payload.to_s.empty? ? "" : Utils.bin_to_hex(decoded.payload),
-        chain_id: decoded.chain_id, nonce: decoded.signer_nonce, gas: decoded.gas_limit
-      }
-      # Same shape as Wallet#prepare_transaction (access_list nil when empty).
-      if decoded.respond_to?(:max_fee_per_gas)
-        access_list = decoded.access_list
-        params.merge(max_fee_per_gas: decoded.max_fee_per_gas,
-                     max_priority_fee_per_gas: decoded.max_priority_fee_per_gas,
-                     access_list: access_list.nil? || access_list.empty? ? nil : access_list)
-      else
-        params.merge(gas_price: decoded.gas_price, access_list: nil)
-      end
-    end
-    private_class_method :params_from
 
     # @!attribute [r] raw
     #   @return [String] the RLP-encoded signed transaction as `0x`-prefixed hex, as sent to
