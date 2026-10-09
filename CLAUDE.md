@@ -31,7 +31,7 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
 | `lib/block_given/wallet.rb` | key, signing (EIP-1559/legacy/191/712), tx preparation |
 | `lib/block_given/transaction.rb`, `receipt.rb`, `event.rb`, `normalizer.rb` | value objects around RPC results |
 | `lib/block_given/abi/` | `Interface` (parse, overloads), `Function`, `Event`, `CustomError`, `Parameter`, `Coder` (coercion) |
-| `lib/block_given/abis/` | shipped standard ABIs (`Abis::ERC20`, `ERC721`, `ERC1155`, `ERC4626`), `Abis.fetch`, `Abis::Definition` builder |
+| `lib/block_given/abi/standards/` | shipped standard ABIs (`Abi::Standards::ERC20`, `ERC721`, `ERC1155`, `ERC4626`), `Abi::Standards.fetch`, `Abi::Standards::Definition` builder |
 | `lib/block_given/contract.rb` | class-level DSL (`abi`, `abi_file`, `address`, `chain`) + read/write/simulate/events |
 | `lib/block_given/railtie.rb` | optional, loaded when `Rails::Railtie` is defined |
 | `spec/` | mirrors `lib/`; `spec/fixtures/erc20.json` only exercises `abi_file` loading |
@@ -47,7 +47,7 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
   asserting the secret is absent.
 - **`tx:` is the only reserved keyword on contract methods.** Everything else maps to ABI input names.
   Never add top-level keywords like `value:` or `from:` to dynamic methods (ERC20 has an input named `value`).
-- **No application ABI in the gem.** Only frozen standards ship (`lib/block_given/abis/`: EIP-20/721/1155/4626 with
+- **No application ABI in the gem.** Only frozen standards ship (`lib/block_given/abi/standards/`: EIP-20/721/1155/4626 with
   ERC-6093 errors). Applications own the ABIs of their own contracts (`abi_file`, `BlockGiven.config.abi_path`).
 - **Ruby 3.1 is the floor.** No syntax newer than 3.1. Known trap: anonymous block `&` combined with keyword
   arguments is a syntax error on 3.1, name the block param. Endless methods (`def x = ...`) are fine.

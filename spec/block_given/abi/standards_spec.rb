@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe BlockGiven::Abis do
+RSpec.describe BlockGiven::Abi::Standards do
   let(:interfaces) { described_class.names.to_h { |name| [name, BlockGiven::Abi::Interface.parse(described_class.fetch(name))] } }
 
   it "ships the four token standards" do
@@ -58,10 +58,10 @@ RSpec.describe BlockGiven::Abis do
     end
 
     it "names inputs the way the README documents them" do
-      expect(erc20.function(:transfer).input_names).to eq(%i[to amount])
-      expect(erc20.function(:transfer_from).input_names).to eq(%i[from to amount])
+      expect(erc20.function(:transfer).input_names).to eq(%i[to value])
+      expect(erc20.function(:transfer_from).input_names).to eq(%i[from to value])
       expect(erc20.function(:balance_of).input_names).to eq(%i[account])
-      expect(erc20.function(:approve).input_names).to eq(%i[spender amount])
+      expect(erc20.function(:approve).input_names).to eq(%i[spender value])
     end
 
     it "decodes the ERC-6093 custom errors" do
@@ -138,7 +138,7 @@ RSpec.describe BlockGiven::Abis do
     before { configure_block_given(stub) }
 
     it "loads through Contract.abi with the constant or the name" do
-      by_constant = Class.new(BlockGiven::Contract) { abi BlockGiven::Abis::ERC20 }
+      by_constant = Class.new(BlockGiven::Contract) { abi BlockGiven::Abi::Standards::ERC20 }
       by_name = Class.new(BlockGiven::Contract) { abi :erc20 }
       expect(by_constant.functions.map(&:signature)).to eq(by_name.functions.map(&:signature))
       expect(by_name.at(USDC_BASE).balance_of(TEST_ADDRESS)).to eq(12_500_000)
@@ -147,9 +147,9 @@ RSpec.describe BlockGiven::Abis do
 
     it "keeps the README keywords working" do
       usdc = Class.new(BlockGiven::Contract) { abi :erc20 }.at(USDC_BASE, wallet: BlockGiven::Wallet.new(private_key: TEST_PRIVATE_KEY))
-      expect(usdc.encode_function_data(:transfer, to: OTHER_ADDRESS, amount: 1e6)).to start_with("0xa9059cbb")
-      expect { usdc.encode_function_data(:transfer, recipient: OTHER_ADDRESS, amount: 1) }
-        .to raise_error(BlockGiven::InvalidArgumentError, /expected to, amount/)
+      expect(usdc.encode_function_data(:transfer, to: OTHER_ADDRESS, value: 1e6)).to start_with("0xa9059cbb")
+      expect { usdc.encode_function_data(:transfer, recipient: OTHER_ADDRESS, value: 1) }
+        .to raise_error(BlockGiven::InvalidArgumentError, /expected to, value/)
     end
   end
 end

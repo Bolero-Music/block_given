@@ -30,7 +30,7 @@ module BlockGiven
   #
   # @example Declaring and using a contract
   #   class Usdc < BlockGiven::Contract
-  #     abi :erc20                   # shipped standard (BlockGiven::Abis), or abi_file "abis/my_contract.json"
+  #     abi :erc20                   # shipped standard (Abi::Standards), or abi_file "abis/my_contract.json"
   #     address "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
   #   end
   #

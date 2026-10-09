@@ -23,7 +23,7 @@ usdc = Erc20.at("0x036CbD53842c5426634e7929541eC2318f3dCF7e", wallet: wallet) # 
 
 puts "#{usdc.symbol} balance: #{usdc.format_amount(usdc.balance_of(wallet))}"
 
-tx = usdc.transfer(to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", amount: usdc.parse_amount("0.01"))
+tx = usdc.transfer(to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", value: usdc.parse_amount("0.01"))
 puts "sent #{tx.hash} -> #{tx.explorer_url}"
 
 receipt = tx.wait!

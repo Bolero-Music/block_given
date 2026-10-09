@@ -17,8 +17,8 @@ description: Change how BlockGiven::Contract or the ABI layer behaves (argument 
   inputs are positional only.
 - Overloads: resolved by arity (positional), by keyword set (kwargs), or by full signature
   `"safeMint(address,bytes)"`. Ambiguity raises `AmbiguousFunctionError` listing the signatures.
-- Shipped standards live in `lib/block_given/abis/`, built with `Abis::Definition` ("type name [indexed]" strings).
-  `Interface.parse` resolves a Symbol through `Abis.fetch`. Keep them to the EIP, the OpenZeppelin extensions and
+- Shipped standards live in `lib/block_given/abi/standards/`, built with `Abi::Standards::Definition` ("type name [indexed]" strings).
+  `Interface.parse` resolves a Symbol through `Abi::Standards.fetch`. Keep them to the EIP, the OpenZeppelin extensions and
   the ERC-6093 errors; application ABIs never go there.
 
 ## Coercion (`Abi::Coder`)

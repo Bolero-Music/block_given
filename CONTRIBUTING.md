@@ -57,7 +57,7 @@ CI runs the same matrix on every push and pull request.
   goes through `Http#redact` or an equivalent. Add a spec proving the key is absent.
 - **`tx:` is the only reserved keyword** on contract methods; every other keyword maps to an ABI input.
   Transaction/call overrides go there, never as top-level keywords.
-- **No application ABI ships in the gem.** Only frozen standards do (`lib/block_given/abis/`, EIP-20/721/1155/4626);
+- **No application ABI ships in the gem.** Only frozen standards do (`lib/block_given/abi/standards/`, EIP-20/721/1155/4626);
   applications own the ABIs of their own contracts. Spec fixtures live in `spec/fixtures/`.
 - **Document what you add.** Every public method, class and constant carries YARD tags (`@param`, `@option`
   for each accepted key, `@return`, `@yield*`, `@raise`, `@example` on entry points). `bundle exec rake doc_check`

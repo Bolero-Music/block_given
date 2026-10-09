@@ -26,7 +26,7 @@ wallet = BlockGiven::Wallet.new(private_key: ENV["PRIVATE_KEY"])
 usdc = Usdc.new(wallet: wallet)
 
 usdc.balance_of(wallet.address)                 # => 12_500_000  (eth_call, decoded)
-tx = usdc.transfer(to: "0x7099...79C8", amount: 1e6)  # signs + broadcasts, returns BlockGiven::Transaction
+tx = usdc.transfer(to: "0x7099...79C8", value: 1e6)  # signs + broadcasts, returns BlockGiven::Transaction
 receipt = tx.wait!                              # polls until mined, raises if reverted
 usdc.events_from(receipt)                       # => [#<BlockGiven::Event Transfer {from:, to:, value: 1000000}>]
 ```
@@ -132,11 +132,11 @@ usdc = Usdc.at("0x036CbD53842c5426634e7929541eC2318f3dCF7e")                 # r
 
 ### Standard ABIs
 
-`BlockGiven::Abis` ships the token standards as frozen ABI arrays, so the usual `erc20.json` download is not
+`BlockGiven::Abi::Standards` ships the token standards as frozen ABI arrays, so the usual `erc20.json` download is not
 needed and the keyword names below are guaranteed: `ERC20`, `ERC721`, `ERC1155` and `ERC4626`. Each one
 carries the EIP functions and events, the usual extensions (metadata, ERC-165 `supportsInterface`, ERC-721
 enumerable) and the [ERC-6093](https://eips.ethereum.org/EIPS/eip-6093) custom errors, so reverts from
-OpenZeppelin-based tokens decode by name. Input names follow OpenZeppelin (`transfer(to, amount)`).
+OpenZeppelin-based tokens decode by name. Input names follow OpenZeppelin 5 (`transfer(to, value)`).
 
 ```ruby
 class Usdc < BlockGiven::Contract
@@ -144,11 +144,11 @@ class Usdc < BlockGiven::Contract
 end
 
 class SongShares < BlockGiven::Contract
-  abi BlockGiven::Abis::ERC1155                # the constant works too
+  abi BlockGiven::Abi::Standards::ERC1155                # the constant works too
 end
 
-BlockGiven::Abis.fetch("ERC-721")            # => the ABI Array; extend it: abi BlockGiven::Abis::ERC721 + extra_definitions
-BlockGiven::Abis.names                       # => [:erc20, :erc721, :erc1155, :erc4626]
+BlockGiven::Abi::Standards.fetch("ERC-721")            # => the ABI Array; extend it: abi BlockGiven::Abi::Standards::ERC721 + extra_definitions
+BlockGiven::Abi::Standards.names                       # => [:erc20, :erc721, :erc1155, :erc4626]
 ```
 
 ERC-721 has two `safeTransferFrom` overloads: positional calls pick one by arity, otherwise use the full
@@ -163,7 +163,7 @@ values; the others sign and broadcast a transaction and return a `BlockGiven::Tr
 ```ruby
 usdc.balance_of("0x...")                      # positional
 usdc.balance_of(account: "0x...")             # keyword (ABI input names, leading _ stripped, snake_cased)
-usdc.transfer(to: "0x...", amount: 1e6)       # 1 USDC; floats are accepted when they are whole numbers
+usdc.transfer(to: "0x...", value: 1e6)       # 1 USDC; floats are accepted when they are whole numbers
 usdc.transfer(wallet2, 1_000_000)             # anything responding to #address works as an address
 usdc.approve(spender, 2**256 - 1)             # uint256 takes any Integer
 usdc.allowance(wallet.address, spender)
@@ -177,7 +177,7 @@ Transaction and call overrides live in the reserved `tx:` keyword so they never 
 (ERC20 itself has an input called `value`):
 
 ```ruby
-usdc.transfer(to: addr, amount: 1e6, tx: { gas: 80_000, nonce: 12 })
+usdc.transfer(to: addr, value: 1e6, tx: { gas: 80_000, nonce: 12 })
 usdc.balance_of(addr, tx: { block: 20_000_000 })                # historical read
 weth.deposit(tx: { value: BlockGiven::Utils.parse_ether("0.1") })  # payable: weth = Weth.at("0x4200000000000000000000000000000000000006")
 usdc.simulate(:transfer, addr, 1e6, tx: { from: treasury })     # eth_call with another msg.sender
@@ -191,14 +191,14 @@ usdc.read(:balance_of, addr)
 usdc.write("transfer(address,uint256)", addr, 1_000_000)   # full signature picks an overload
 usdc.simulate(:transfer, addr, 10**12)     # eth_call from the wallet: raises the decoded revert without paying gas
 usdc.estimate_gas(:transfer, addr, 1_000_000)
-usdc.encode_function_data(:transfer, to: addr, amount: 1)
+usdc.encode_function_data(:transfer, to: addr, value: 1)
 usdc.decode_function_result(:balance_of, "0x...")
 ```
 
 ### Transactions & receipts
 
 ```ruby
-tx = usdc.transfer(to: addr, amount: 1e6)
+tx = usdc.transfer(to: addr, value: 1e6)
 tx.hash                      # "0x..."
 tx.explorer_url              # https://basescan.org/tx/0x...
 tx.mined?                    # non-blocking
@@ -219,7 +219,7 @@ nonce, then broadcast. If the RPC call times out you still know exactly which tr
 and a same-nonce replacement can never be mined twice. Example: paying out USDC from an outbox table.
 
 ```ruby
-signed = usdc.prepare_write(:transfer, to: payout.wallet, amount: 12_500_000, tx: { nonce: payout.nonce })
+signed = usdc.prepare_write(:transfer, to: payout.wallet, value: 12_500_000, tx: { nonce: payout.nonce })
 signed.hash, signed.nonce, signed.raw                       # known now; signed.to_h for persistence
 payout.update!(tx_hash: signed.hash, raw_tx: signed.raw, status: :submitted)
 signed.broadcast                                            # eth_sendRawTransaction, returns the Transaction
@@ -246,7 +246,7 @@ the original gets mined first, the replacement is rejected for its nonce and `tx
 
 ```ruby
 begin
-  usdc.transfer(to: addr, amount: 10**12)
+  usdc.transfer(to: addr, value: 10**12)
 rescue BlockGiven::ContractRevertError => e
   e.message     # => 'ERC20InsufficientBalance("0xf39F...", 5, 1000000000000)'
   e.error_name  # => "ERC20InsufficientBalance"

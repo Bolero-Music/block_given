@@ -36,7 +36,7 @@ module BlockGiven
       #
       # @param source [Array<Hash>, Hash, String, Symbol, Pathname, File, Interface] an ABI Array, a Hardhat/Foundry
       #   artifact Hash with an `"abi"` (or `:abi`) key, a JSON String, the Symbol name of a shipped standard
-      #   ({Abis.fetch}: `:erc20`, `:erc721`, `:erc1155`, `:erc4626`), a Pathname/File to read, or an Interface
+      #   ({Standards.fetch}: `:erc20`, `:erc721`, `:erc1155`, `:erc4626`), a Pathname/File to read, or an Interface
       #   (returned as is)
       # @return [Interface]
       # @raise [BlockGiven::AbiError] when the JSON is invalid, the Hash has no `abi` key or the source
@@ -61,7 +61,7 @@ module BlockGiven
       def self.load_definitions(source)
         case source
         when Array then source
-        when Symbol then Abis.fetch(source)
+        when Symbol then Standards.fetch(source)
         when Hash then source["abi"] || source[:abi] || raise(AbiError, "Hash has no 'abi' key")
         when Pathname, File then load_definitions(JSON.parse(File.read(source)))
         when String then load_definitions(JSON.parse(source))

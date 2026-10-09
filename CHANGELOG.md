@@ -8,9 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- `BlockGiven::Abis`: the ERC20, ERC721, ERC1155 and ERC4626 interfaces ship as frozen ABI arrays (EIP functions and
-  events, metadata / ERC-165 / enumerable extensions, ERC-6093 custom errors). `Contract.abi` accepts their Symbol
-  name (`abi :erc20`), `Abis.fetch("ERC-721")` returns the array, `Abis.names` lists them.
+- `BlockGiven::Abi::Standards`: the ERC20, ERC721, ERC1155 and ERC4626 interfaces ship as frozen ABI arrays (EIP
+  functions and events, metadata / ERC-165 / enumerable extensions, ERC-6093 custom errors), with the input names of
+  OpenZeppelin 5 (`transfer(to:, value:)`). `Contract.abi` accepts their Symbol name (`abi :erc20`),
+  `Abi::Standards.fetch("ERC-721")` returns the array, `Abi::Standards.names` lists them.
 
 ### Changed
 
