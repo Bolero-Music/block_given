@@ -29,7 +29,7 @@ Metrics/PerceivedComplexity:
 Metrics/AbcSize:
   Enabled: false
 Naming/MethodParameterName:
-  AllowedNames: [tx, a, b, id, to]
+  AllowedNames: [tx, a, b, id, to, r, s, v, k, x] # r, s, v, k, x: ECDSA notation in lib/block_given/crypto
 Metrics/ParameterLists:
   Max: 10
 Naming/BlockForwarding:

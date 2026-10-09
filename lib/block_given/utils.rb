@@ -107,7 +107,7 @@ module BlockGiven
     #   # => "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
     def keccak256(data)
       bytes = hex?(data) ? hex_to_bin(data) : data.to_s
-      bin_to_hex(Eth::Util.keccak256(bytes))
+      bin_to_hex(Crypto::Keccak.digest(bytes))
     end
 
     # Whether a value is a 20-byte hex address (`0x` + 40 hex chars); the EIP-55 checksum is not verified.
@@ -128,7 +128,9 @@ module BlockGiven
       value = value.address if value.respond_to?(:address) && !value.is_a?(String)
       raise InvalidAddressError, "invalid address: #{value.inspect}" unless address?(value)
 
-      Eth::Address.new(value).checksummed
+      hex = strip_hex(value).downcase
+      nibbles = Crypto::Keccak.digest(hex).unpack1("H*")
+      "0x#{hex.chars.each_with_index.map { |char, i| nibbles[i].to_i(16) >= 8 ? char.upcase : char }.join}"
     end
 
     # Compare two addresses ignoring checksum casing.
