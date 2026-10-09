@@ -44,7 +44,7 @@ module SpecHelpers
   end
 
   def abi_encode(types, values)
-    BlockGiven::Utils.bin_to_hex(Eth::Abi.encode(types, values))
+    BlockGiven::Utils.bin_to_hex(BlockGiven::Abi::Codec.encode(types, values))
   end
 
   def build_stub(extra = {})
