@@ -10,6 +10,7 @@ group :development, :test do
   gem "rubocop", "~> 1.50", require: false
   gem "simplecov", "~> 0.22", require: false
   gem "webmock", "~> 3.18"
+  gem "yard", "~> 0.9", require: false
 end
 
 # Rails compatibility suites live in gemfiles/rails_*.gemfile:

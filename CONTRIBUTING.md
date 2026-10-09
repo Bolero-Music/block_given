@@ -15,6 +15,28 @@ The `eth` dependency compiles `rbsecp256k1`. If the bundled libsecp256k1 downloa
 `brew install secp256k1` (macOS) or `apt-get install libsecp256k1-dev` (Debian/Ubuntu), then
 `bundle config build.rbsecp256k1 --with-system-library` and `bundle install` again.
 
+## Branches
+
+- `develop` is the integration branch: **every pull request starts from `develop` and targets `develop`**.
+- `main` only ever receives `develop` through a release pull request; it always reflects what is published.
+- Branch names: `feature/...`, `fix/...`, `docs/...`, `chore/...`.
+
+```bash
+git switch develop && git pull
+git switch -c feature/my-change
+```
+
+Both branches are protected by repository rulesets, so nothing lands without a pull request. The rules are the
+same on `develop` and `main`:
+
+- direct pushes, force pushes and branch deletion are blocked;
+- one approving review is required, and the last push must be approved by someone else;
+- all 8 CI matrix jobs must pass;
+- approvals are dismissed when new commits are pushed;
+- every review conversation must be resolved.
+
+Repository admins can bypass these rules when a hotfix cannot wait; everyone else goes through the pull request.
+
 ## Running the full matrix
 
 ```bash
@@ -37,6 +59,9 @@ CI runs the same matrix on every push and pull request.
   Transaction/call overrides go there, never as top-level keywords.
 - **No application ABI ships in the gem.** Only frozen standards do (`lib/block_given/abis/`, EIP-20/721/1155/4626);
   applications own the ABIs of their own contracts. Spec fixtures live in `spec/fixtures/`.
+- **Document what you add.** Every public method, class and constant carries YARD tags (`@param`, `@option`
+  for each accepted key, `@return`, `@yield*`, `@raise`, `@example` on entry points). `bundle exec rake doc_check`
+  must report 100%; it lists what is missing. Mark internal helpers `@api private` rather than leaving them bare.
 - **Ruby 3.1 is the floor.** Avoid syntax newer than 3.1 (no `it` block param, no `Data.define`), and beware
   that an anonymous block `&` combined with keyword arguments is a syntax error on 3.1.
 - **Every user-visible change gets a CHANGELOG line** under `Unreleased`, and README docs when it adds API.
@@ -53,16 +78,20 @@ pre-approves the test and lint commands and asks before anything outward-facing 
 
 ## Pull requests
 
-1. Branch from `main`, keep the PR focused.
+1. Branch from `develop` and target `develop`, keep the PR focused.
 2. Add specs for the change (unit, plus a Rails compat consideration if it touches loading or logging).
 3. Update `CHANGELOG.md` and, if relevant, `README.md`.
 4. Make sure `bundle exec rspec`, `bundle exec rubocop` and `gem build block_given.gemspec` pass.
 5. Describe the motivation in the PR; link the issue if there is one.
+6. Get it approved and green: a PR merges only once CI passes and it carries an approving review.
+   Resolve every review conversation first; pushing new commits dismisses the existing approvals.
 
 Commit messages: imperative summary line under 72 characters, blank line, then the why.
 
 ## Releasing (maintainers)
 
-See the "Versioning & releases" section of the README. In short: bump `lib/block_given/version.rb`, move the
-`Unreleased` notes under the new version with today's date, commit, then `bundle exec rake release`
-(or push a `vX.Y.Z` tag to let the release workflow publish through RubyGems trusted publishing).
+See the "Versioning & releases" section of the README. In short: on a branch off `develop`, bump
+`lib/block_given/version.rb`, move the `Unreleased` notes under the new version with today's date, and merge
+it into `develop`. Then open the release pull request `develop` -> `main`; once it is approved and CI is green,
+merge it and push the `vX.Y.Z` tag (the release workflow publishes through RubyGems trusted
+publishing; `bundle exec rake release` does the same from a checkout of `main`).

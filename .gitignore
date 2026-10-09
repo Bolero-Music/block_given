@@ -11,3 +11,5 @@ Gemfile.lock
 !.env.example
 .DS_Store
 gemfiles/*.lock
+doc/
+.yardoc/

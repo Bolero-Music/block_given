@@ -3,6 +3,7 @@
 [![CI](https://github.com/Bolero-Music/block_given/actions/workflows/ci.yml/badge.svg)](https://github.com/Bolero-Music/block_given/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/block_given.svg)](https://rubygems.org/gems/block_given)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
+[![API docs](https://img.shields.io/badge/docs-rubydoc.info-blue.svg)](https://rubydoc.info/gems/block_given)
 ![Ruby 3.1+](https://img.shields.io/badge/ruby-%3E%3D%203.1-cc342d)
 
 **Ruby client for EVM smart contracts, inspired by [viem](https://viem.sh).**
@@ -52,7 +53,7 @@ usdc.events_from(receipt)                       # => [#<BlockGiven::Event Transf
 - [Testing your code](#testing-your-code)
 - [Compatibility](#compatibility)
   - [Rails integration](#rails-integration)
-- [Development](#development)
+- [Development](#development) (the full API reference lives on [rubydoc.info](https://rubydoc.info/gems/block_given))
   - [Versioning & releases](#versioning--releases)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -442,9 +443,11 @@ bin/setup                            # bundle install (+ libsecp256k1 fallback)
 bundle exec rspec                    # unit suite (Stub connector, no network)
 COVERAGE=1 bundle exec rspec         # + SimpleCov report in coverage/ (minimum 90% lines)
 bundle exec rubocop
+bundle exec rake doc                 # YARD API docs in doc/ (also published at rubydoc.info/gems/block_given)
+bundle exec rake doc_check           # fails unless 100% of the public API is documented
 ALCHEMY_API_KEY=... bin/console      # IRB with BlockGiven configured for BLOCK_GIVEN_CHAIN (default base)
 
-bundle exec rake ci                  # specs + rubocop + gem build
+bundle exec rake ci                  # specs + rubocop + doc coverage + gem build
 
 # Ruby / Rails matrix (Docker for the Rubies you do not have locally)
 bin/matrix                           # Ruby 3.2, 3.3, 3.4
@@ -462,8 +465,9 @@ fixes the patch. Every change is listed in `CHANGELOG.md`. Dependency policy: Ru
 only once they reach end of life, Rails versions are tested while they receive security fixes, and the `eth`
 constraint is only tightened when a feature needs it.
 
-To release: bump `lib/block_given/version.rb`, move the `Unreleased` notes under the new version in `CHANGELOG.md`,
-commit, then push a `vX.Y.Z` tag. The release workflow checks the tag against the version, runs the suite and
+To release: on a branch off `develop`, bump `lib/block_given/version.rb`, move the `Unreleased` notes under the
+new version in `CHANGELOG.md`, merge it into `develop`, then merge the release pull request `develop` -> `main`
+and push a `vX.Y.Z` tag. The release workflow checks the tag against the version, runs the suite and
 publishes through RubyGems trusted publishing (no API key in CI). `bundle exec rake release` does the same
 from a maintainer machine with RubyGems credentials.
 
@@ -476,16 +480,20 @@ from a maintainer machine with RubyGems credentials.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on [GitHub](https://github.com/Bolero-Music/block_given). Please read
-[CONTRIBUTING.md](CONTRIBUTING.md) (setup, test matrix, conventions) and the
-[code of conduct](CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on [GitHub](https://github.com/Bolero-Music/block_given). Branch from
+`develop` and target `develop`: `main` is release-only, and both branches require a pull request with green CI and
+an approving review. Please read [CONTRIBUTING.md](CONTRIBUTING.md) (branches, setup, test matrix, conventions) and
+the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Roadmap
 
 - Contract deployment (`Contract.deploy`)
 - Multi-contract indexer helper with pluggable cursor store
 - Human-readable ABI (`parse_abi("function transfer(address to, uint256 amount)")`)
-- WebSocket connector for push-based subscriptions
+- WebSocket connector: `watch_*` helpers subscribe to filtered `logs` (`eth_subscribe`, like viem's `webSocket`
+  transport) so nothing is fetched per block; on every (re)connection a single range-based `eth_getLogs` catch-up
+  runs from the persisted cursor, overlapping logs are deduplicated on `(block_hash, log_index)`, `removed` logs
+  handle reorgs, and polling is the fallback when the socket stays down
 - Multicall batching of reads
 
 ## License

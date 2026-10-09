@@ -14,6 +14,7 @@ Gem::Specification.new do |spec|
     inspired by viem: typed contract classes generated from an ABI, wallets that sign
     EIP-1559 transactions, pluggable JSON-RPC connectors (Alchemy first) and
     polling helpers for receipts, blocks and events.
+    Documentation: https://rubydoc.info/gems/block_given
   DESC
   spec.homepage = "https://github.com/Bolero-Music/block_given"
   spec.license = "MIT"

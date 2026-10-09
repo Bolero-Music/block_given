@@ -15,7 +15,9 @@ description: Cut a block_given release — version bump, CHANGELOG, verification
    gem build block_given.gemspec && GEM_HOME=$(mktemp -d) gem install --local --ignore-dependencies ./block_given-X.Y.Z.gem
    tar -xOf block_given-X.Y.Z.gem data.tar.gz | tar -tz     # only lib/, README, CHANGELOG, LICENSE
    ```
-5. **Commit** `Release vX.Y.Z`, push `main`, then tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+5. **Commit** `Release vX.Y.Z` on a branch off `develop`, open the PR against `develop` (1 approval + green CI),
+   then the release PR `develop` -> `main` (same rules). Neither branch accepts a direct push.
+   Once `main` is updated: `git tag vX.Y.Z && git push origin vX.Y.Z`.
    Tagging and pushing are outward-facing: confirm with the maintainer before doing them.
 6. **Publish**: the `Release` workflow (`.github/workflows/release.yml`) checks the tag matches
    `BlockGiven::VERSION`, runs the suite and publishes with RubyGems trusted publishing. Fallback from a maintainer

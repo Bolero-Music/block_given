@@ -12,6 +12,12 @@ All notable changes to this project are documented here. The format follows
   events, metadata / ERC-165 / enumerable extensions, ERC-6093 custom errors). `Contract.abi` accepts their Symbol
   name (`abi :erc20`), `Abis.fetch("ERC-721")` returns the array, `Abis.names` lists them.
 
+### Changed
+
+- YARD documentation for the whole public API (every method, option, block and return value), published on
+  [rubydoc.info](https://rubydoc.info/gems/block_given); `rake doc` builds it locally and `rake doc_check` (part of
+  `rake ci` and GitHub CI) fails under 100% coverage.
+
 ## [0.1.0] - 2026-09-11
 
 Initial release.

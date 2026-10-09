@@ -6,7 +6,7 @@ model: inherit
 ---
 
 You review changes to the `block_given` Ruby gem. Read `CLAUDE.md` first: it lists the rules. Inspect the diff
-(`git diff main...HEAD` or the working tree) and the touched specs, then report findings ordered by severity.
+(`git diff develop...HEAD` or the working tree) and the touched specs, then report findings ordered by severity.
 Do not edit files.
 
 Check, in this order:
