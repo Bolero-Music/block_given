@@ -29,7 +29,7 @@ an exception instance to raise.
 | `HttpError` 429 after retries | rate limit; raise `polling_interval`, lower watcher count, check `BlockGiven.watchers` for duplicates | connector `retries`/`retry_delay` |
 | `nonce too low` / `replacement transaction underpriced` | concurrent sends from one wallet; serialize or pass `tx: { nonce: }` | `Wallet#prepare_transaction` |
 | `TimeoutError` on `wait` | tx stuck (fees too low) or wrong chain; check `tx.details` and `explorer_url` | `Client#wait_for_transaction_receipt` |
-| `Eth::Tx::ParameterError: gas limit too low` | explicit `gas:` below intrinsic cost | `Wallet#sign_transaction` |
+| `InvalidArgumentError: gas limit ... is below the intrinsic gas` | explicit `gas:` below intrinsic cost | `TransactionEnvelope::Fields.intrinsic_gas` |
 
 ## 4. Live read-only check (console only)
 

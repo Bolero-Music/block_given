@@ -67,9 +67,9 @@ usdc.events_from(receipt)                       # => [#<BlockGiven::Event Transf
 gem "block_given"
 ```
 
-BlockGiven depends on the [`eth`](https://github.com/q9f/eth.rb) gem for secp256k1, keccak and ABI primitives.
-Its native extension needs libsecp256k1; on macOS `brew install secp256k1` then
-`gem install rbsecp256k1 -- --with-system-library` if the bundled build fails.
+BlockGiven is pure Ruby: keccak-256, secp256k1 signing (RFC 6979), RLP, transactions, EIP-712 and the ABI codec
+are implemented in the gem on top of Ruby's OpenSSL standard library, so it installs with no native extension and
+no system package (the OpenSSL Ruby links against must support the secp256k1 curve, as stock builds do).
 
 Requires Ruby >= 3.1.
 
@@ -415,7 +415,6 @@ stub.calls_for("eth_sendRawTransaction")
 | ------ | ------------------------------------------ | ------------------------------------------------------------- |
 | Ruby   | >= 3.1 (3.1, 3.2, 3.3, 3.4)                | CI matrix + local run on each version                         |
 | Rails  | optional, 7.0 / 7.1 / 7.2 / 8.0            | full suite run with Rails loaded (`gemfiles/rails_*.gemfile`) |
-| `eth`  | ~> 0.5, >= 0.5.17 (tuple ABI support)      | pinned in the gemspec                                         |
 | stdlib | `bigdecimal`, `logger` declared explicitly | bundled gems in Ruby 3.4 / 3.5                                |
 
 BlockGiven has no runtime dependency on Rails or ActiveSupport: it is plain Ruby and works in scripts,
@@ -439,7 +438,7 @@ unless the initializer sets `c.logger` itself. Contract classes live wherever yo
 ## Development
 
 ```bash
-bin/setup                            # bundle install (+ libsecp256k1 fallback)
+bin/setup                            # bundle install
 bundle exec rspec                    # unit suite (Stub connector, no network)
 COVERAGE=1 bundle exec rspec         # + SimpleCov report in coverage/ (minimum 90% lines)
 bundle exec rubocop
@@ -462,8 +461,8 @@ CI runs the suite on Ruby 3.1 to 3.4 and against Rails 7.0, 7.1, 7.2 and 8.0 (`.
 BlockGiven follows [Semantic Versioning](https://semver.org): breaking changes to the public API
 (`BlockGiven::Contract`, `Wallet`, `Client`, connectors, `Utils`) bump the major version, additions the minor,
 fixes the patch. Every change is listed in `CHANGELOG.md`. Dependency policy: Ruby versions are dropped
-only once they reach end of life, Rails versions are tested while they receive security fixes, and the `eth`
-constraint is only tightened when a feature needs it.
+only once they reach end of life, Rails versions are tested while they receive security fixes, and runtime
+dependencies stay limited to Ruby's default and bundled gems.
 
 To release: on a branch off `develop`, bump `lib/block_given/version.rb`, move the `Unreleased` notes under the
 new version in `CHANGELOG.md`, merge it into `develop`, then merge the release pull request `develop` -> `main`

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "eth"
-
 require_relative "block_given/version"
 require_relative "block_given/errors"
 require_relative "block_given/utils"
