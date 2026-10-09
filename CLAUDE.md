@@ -60,7 +60,9 @@ ALCHEMY_API_KEY=... bin/console # IRB with BlockGiven configured (BLOCK_GIVEN_CH
   `@return`, `@yield*`, `@raise`, `@example` on entry points). `rake doc_check` fails under 100%; internal-but-public
   methods carry `@api private`.
 - **Semver.** Breaking changes to `Contract`, `Wallet`, `Client`, connectors, `Utils` bump the major.
-- Commits: imperative summary under 72 chars, blank line, the why. Branch from `main`.
+- Commits: imperative summary under 72 chars, blank line, the why. Branch from `develop` and open the PR
+  against `develop`; `main` only receives `develop` through a release PR (rulesets on both branches: no direct
+  push, all CI checks green, 1 approval, admins can bypass).
 
 ## Skills
 
