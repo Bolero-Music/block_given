@@ -101,14 +101,18 @@ module BlockGiven
     #   signature = wallet.sign_message("Login to Bolero at 2024-01-01")
     #   signature # => "0x..." (132 hex characters)
     def sign_message(message)
-      Utils.prefix_hex(Eth::Key.new(priv: private_key).personal_sign(message))
+      bytes = message.to_s.b
+      sign_digest(Crypto::Keccak.digest("\x19Ethereum Signed Message:\n#{bytes.bytesize}".b + bytes))
     end
 
     # Signs EIP-712 typed structured data.
     #
     # @param typed_data [Hash] the EIP-712 payload with `:types`, `:primaryType`, `:domain` and `:message` keys
-    #   (String keys are accepted too)
+    #   (String keys are accepted too). `EIP712Domain` may be omitted from `:types`: it is then derived from the
+    #   domain keys present. Arrays are hashed as the specification (and viem) define them
     # @return [String] the 65-byte signature (r, s, v) as `0x`-prefixed hex
+    # @raise [BlockGiven::InvalidArgumentError] when a section is missing, a type is unknown or a value does not
+    #   fit its type
     # @example Sign an ERC-2612 permit
     #   wallet.sign_typed_data(
     #     types: { EIP712Domain: [...], Permit: [{ name: "owner", type: "address" }, ...] },
@@ -117,7 +121,7 @@ module BlockGiven
     #     message: { owner: wallet.address, spender: "0x...", value: 1_000_000, nonce: 0, deadline: 1_700_000_000 }
     #   )
     def sign_typed_data(typed_data)
-      Utils.prefix_hex(Eth::Key.new(priv: private_key).sign_typed_data(typed_data))
+      sign_digest(Eip712.hash(typed_data))
     end
 
     # Resolves the missing fields, signs, and returns the transaction without broadcasting it.
@@ -281,6 +285,12 @@ module BlockGiven
     def inspect = "#<BlockGiven::Wallet #{address}>"
 
     private
+
+    # r || s || v with v = 27 + recovery id, as `personal_sign` and `eth_signTypedData` return.
+    def sign_digest(digest)
+      r, s, recovery_id = Crypto::Secp256k1.sign(digest, @private_key)
+      Utils.bin_to_hex(Crypto::Secp256k1.int_to_bytes(r) + Crypto::Secp256k1.int_to_bytes(s) + (27 + recovery_id).chr)
+    end
 
     def estimate_gas(to:, data:, value:)
       raise InvalidArgumentError, "contract creation requires an explicit gas: value" if to.nil?

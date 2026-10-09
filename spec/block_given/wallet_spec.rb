@@ -36,9 +36,12 @@ RSpec.describe BlockGiven::Wallet do
     end
   end
 
-  it "signs messages (EIP-191)" do
+  it "signs messages (EIP-191) like eth, empty, multi-byte and long messages included" do
     signature = described_class.new(private_key: TEST_PRIVATE_KEY).sign_message("hello")
     expect(signature).to match(/\A0x[0-9a-f]{130}\z/)
+    GOLDEN["personal_sign"].each do |vector|
+      expect(described_class.new(private_key: vector["private_key"]).sign_message(vector["message"])).to eq(vector["signature"])
+    end
   end
 
   describe "#prepare_transaction" do
